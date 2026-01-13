@@ -6,8 +6,8 @@ using System.Collections;
 public class button : MonoBehaviour, IPointerEnterHandler,IPointerExitHandler
 {
     public float moveDistance = 10f;      
-    public float duration = 0.15f;        
-    public float colorBrighten = 1.1f;    
+    public float duration = 0.1f;        
+    public float colorBrighten = 1f;    
 
     private RectTransform rect;
     private Vector2 originalPos;
@@ -42,6 +42,10 @@ public class button : MonoBehaviour, IPointerEnterHandler,IPointerExitHandler
             StopCoroutine(currentCoroutine);
 
         currentCoroutine = StartCoroutine(Animate(targetPos, targetColor));
+    }
+    public void ClearButtonSelection()
+    {
+        EventSystem.current.SetSelectedGameObject(null);
     }
 
     IEnumerator Animate(Vector2 targetPos, Color targetColor)
