@@ -21,11 +21,11 @@ public class open_playercontent : MonoBehaviour
     {
         if (Isopen)
         {
-
+            player_content.SetActive(true);
         }
         else
         {
-
+            player_content.SetActive(false);
         }
     }
     
