@@ -43,7 +43,7 @@ public class ready_toggle : MonoBehaviour
         {
             readyText.text = "ÁØºñ ¿Ï·á";
             img.color = Hex("#8BFFB2");
-            Debug.Log("µÊ");
+            Debug.Log("¾È µÊ");
         }
     }
 
