@@ -9,7 +9,7 @@ public class ready_toggle : MonoBehaviour
     public Button readyButton;
 
     private Image img;
-    private bool isReady = false; 
+    private bool isReady = false;
 
     void Awake()
     {
@@ -25,6 +25,16 @@ public class ready_toggle : MonoBehaviour
         UpdateUI();
     }
 
+    private void Update()
+    {
+        if (Input.GetKeyDown("space"))
+        {
+            isReady = !isReady;
+            UpdateUI();
+        }
+    }
+
+
     public void OnClickToggle()
     {
         isReady = !isReady;
@@ -37,13 +47,13 @@ public class ready_toggle : MonoBehaviour
         {
             readyText.text = "¡ÿ∫Ò";
             img.color = Hex("#FFFFFF");
-            Debug.Log("µ ");
+            
         }
         else
         {
             readyText.text = "¡ÿ∫Ò øœ∑·";
             img.color = Hex("#8BFFB2");
-            Debug.Log("æ» µ ");
+            
         }
     }
 
