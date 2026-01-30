@@ -12423,9 +12423,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\uBC29\uC7A5\uC740 \uBAA8\uB450\uAC00 \uC900\uBE44 \uC644\uB8CC\uB41C
-    \uC0C1\uD0DC\uC5D0\uC11C \"\uAC8C\uC784 \uC2DC\uC791!\" \uC774\uB77C\uB294 \uBB38\uAD6C\uAC00
-    \uB098\uC624\uAC8C \uD558\uC148"
+  m_text: "\uBC29\uC7A5\uC740 \"\uAC8C\uC784 \uC2DC\uC791\"\uC774\uB77C\uB294 \uBB38\uAD6C\uC640
+    \uD568\uAED8 \uC774 \uC0C9\uC5D0\uC11C \uBAA8\uB450\uAC00 \uC644\uB8CC\uB41C\uB2E4\uBA74
+    \uCD08\uB85D\uC0C9\uC73C\uB85C \uBC14\uB00C\uAC8C \uD558\uC148"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 1a927c92bd195c94eb9ac35aee1acf6a, type: 2}
   m_sharedMaterial: {fileID: -5739668403051092369, guid: 1a927c92bd195c94eb9ac35aee1acf6a, type: 2}
