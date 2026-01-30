@@ -13885,6 +13885,8 @@ GameObject:
   - component: {fileID: 1752954115}
   - component: {fileID: 1752954114}
   - component: {fileID: 1752954113}
+  - component: {fileID: 1752954117}
+  - component: {fileID: 1752954118}
   m_Layer: 5
   m_Name: room_make
   m_TagString: Untagged
@@ -13970,7 +13972,31 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1752954115}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1752954113}
+        m_TargetAssemblyTypeName: button, Assembly-CSharp
+        m_MethodName: ClearButtonSelection
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 1752954118}
+        m_TargetAssemblyTypeName: scene_change, Assembly-CSharp
+        m_MethodName: Onclick_scene
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1752954115
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14009,6 +14035,30 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1752954111}
   m_CullTransparentMesh: 1
+--- !u!114 &1752954117
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1752954111}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a328c13dd7d137246a91db290462eaac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1752954118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1752954111}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b33d7d3bf5f40124687c17ac4274b5f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1769649362
 GameObject:
   m_ObjectHideFlags: 0
