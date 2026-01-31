@@ -1,6 +1,4 @@
 using UnityEngine;
-
-
 public class text : MonoBehaviour
 {
     [Header("크고 작아짐")]
