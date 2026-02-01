@@ -6,45 +6,46 @@ public class chr_toggle : MonoBehaviour
 {
     public TMP_Text chrselect;
     public Button chrselectbutton;
+    public Bblock_manager subject;
 
     private Image img;
-    private int decide = 0;
 
     void Awake()
     {
         img = chrselectbutton.GetComponent<Image>();
-        chrselectbutton.onClick.AddListener(OnClickchrselect);
+        
     }
 
-    void Start()
+    void OnEnable()
     {
-        UpdateUI();
+        subject.OnreadyChanged += HandleReadyStateChange; 
     }
 
-    public void OnClickchrselect()
+    void OnDisable()
     {
-        if (decide >= 2) return;   
-        decide++;
-        UpdateUI();
+        subject.OnreadyChanged -= HandleReadyStateChange;
     }
 
-    void UpdateUI()
+    void HandleReadyStateChange(Ready readystate)
     {
-        if (decide == 0)
+        switch (readystate)
         {
-            chrselect.text = "선택";
-            img.color = Hex("#FFFFFF");
-            chrselectbutton.interactable = true;
-        }
-        else if (decide == 1)
-        {
-            chrselect.text = "확실합니까?";
-        }
-        else 
-        {
-            chrselect.text = "확정!";
-            img.color = Hex("#8BFFB2");
-            chrselectbutton.interactable = false; 
+            case Ready.none:
+                chrselect.text = "준비";
+                
+                break;
+
+            case Ready.ready:
+                chrselect.text = "확실합니까?";
+                
+                break;
+
+            case Ready.confirmed:
+                chrselect.text = "확정";
+                
+                img.color = Hex("#8BFFB2");
+                break;
+                
         }
     }
 

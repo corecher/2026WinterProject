@@ -4,3 +4,10 @@ public enum ChrState
     bulldozer,
     dtruck
 }
+
+public enum Ready
+{
+    none,
+    ready,
+    confirmed
+}
