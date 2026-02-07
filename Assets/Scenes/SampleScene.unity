@@ -489,8 +489,8 @@ Transform:
   m_GameObject: {fileID: 574213390}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.9, y: -0.21, z: -0.47}
-  m_LocalScale: {x: 7.7709084, y: 1, z: 12.851552}
+  m_LocalPosition: {x: 0.821, y: -0.21, z: -0.931}
+  m_LocalScale: {x: 33.65066, y: 1, z: 24.76008}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -528,13 +528,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a60b3af03e3f5124e8a7feb1891abd1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HeavyVehicleController
-  moveSpeed: 20
-  acceleration: 100
-  rotationSpeed: 120
-  jumpForce: 15
-  jumpCooldown: 0.5
+  moveSpeed: 10
+  acceleration: 5
+  rotationSpeed: 100
+  jumpForce: 6
+  jumpCooldown: 5
   groundCheckDistance: 1
   groundCheckOffset: {x: 0, y: 0.1, z: 0}
+  boostSpeedMultiplier: 1.5
+  maxBoostGauge: 100
+  boostRechargeRate: 8
+  boostConsumeRate: 25
+  collisionSlowdownDuration: 1.5
+  collisionSlowdownMultiplier: 0.5
+  maxGaugeLossPercent: 0.5
+  minCollisionSpeed: 5
+  obstacleTag: Obstacle
   mass: 1000
   drag: 0.5
   angularDrag: 3
