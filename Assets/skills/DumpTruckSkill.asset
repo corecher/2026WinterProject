@@ -23,4 +23,4 @@ MonoBehaviour:
   dumpTruckDetectionRadius: 15
   dumpTruckProjectileSpeed: 15
   dumpTruckSlowPercent: 0.5
-  dirtProjectilePrefab: {fileID: 0}
+  dirtProjectilePrefab: {fileID: 5776933845577464078, guid: 948d567ded5363c48aee2d35c91d6b3a, type: 3}
