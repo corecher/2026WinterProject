@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2710737fdaa42fc4b90c3c23a0e90fa6, type: 3}
+  m_Name: BulldozerSkill
+  m_EditorClassIdentifier: Assembly-CSharp::VehicleSkillData
+  skillName: 
+  vehicleType: 1
+  cooldownTime: 15
+  excavatorGrabRange: 5
+  excavatorThrowForce: 20
+  excavatorStunDuration: 3
+  excavatorAnimationDelay: 0.5
+  bulldozerShieldDuration: 5
+  dumpTruckDetectionRadius: 15
+  dumpTruckProjectileSpeed: 15
+  dumpTruckSlowPercent: 0.5
+  dirtProjectilePrefab: {fileID: 0}
