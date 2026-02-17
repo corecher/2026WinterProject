@@ -9,7 +9,7 @@ public class ready_toggle : MonoBehaviour
     public Button readyButton;
 
     private Image img;
-    private bool isReady = false;
+    public bool isReady = false;
 
     void Awake()
     {
@@ -45,13 +45,13 @@ public class ready_toggle : MonoBehaviour
     {
         if (!isReady)
         {
-            readyText.text = "ÁØºñ";
+            readyText.text = "ï¿½Øºï¿½";
             img.color = Hex("#FFFFFF");
             
         }
         else
         {
-            readyText.text = "ÁØºñ ¿Ï·á";
+            readyText.text = "ï¿½Øºï¿½ ï¿½Ï·ï¿½";
             img.color = Hex("#8BFFB2");
             
         }
