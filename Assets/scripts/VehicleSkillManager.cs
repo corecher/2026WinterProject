@@ -5,25 +5,19 @@ public class VehicleSkillManager : MonoBehaviour
 {
     [Header("스킬 설정")]
     [SerializeField] private VehicleSkillData skillData;
-    
     private float currentCooldown = 0f;
     private bool isSkillActive = false;
-    
     private GameObject grabbedPlayer;
     private bool isGrabbing = false;
-    
     private float shieldTimer = 0f;
     private bool hasShield = false;
-    
     private Rigidbody rb;
     private HeavyVehicleController controller;
-    
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         controller = GetComponent<HeavyVehicleController>();
     }
-    
     void Update()
     {
         if (currentCooldown > 0)
@@ -51,7 +45,6 @@ public class VehicleSkillManager : MonoBehaviour
             }
         }
     }
-    
     void UseSkill()
     {
         if (skillData == null) return;
@@ -71,7 +64,6 @@ public class VehicleSkillManager : MonoBehaviour
         
         currentCooldown = skillData.cooldownTime;
     }
-    
     // ==================== 포크레인 스킬 ====================
     void UseExcavatorSkill()
     {
@@ -79,7 +71,6 @@ public class VehicleSkillManager : MonoBehaviour
         
         Invoke(nameof(ExcavatorGrab), skillData.excavatorAnimationDelay);
     }
-    
     void ExcavatorGrab()
     {
         Collider[] hits = Physics.OverlapSphere(
@@ -109,7 +100,6 @@ public class VehicleSkillManager : MonoBehaviour
         
         Debug.Log("포크레인 스킬 실패 - 플레이어 없음");
     }
-    
     void ThrowGrabbedPlayer()
     {
         if (grabbedPlayer == null) return;
@@ -134,7 +124,6 @@ public class VehicleSkillManager : MonoBehaviour
         grabbedPlayer = null;
         isGrabbing = false;
     }
-    
     void LateUpdate()
     {
         if (isGrabbing && grabbedPlayer != null)
@@ -142,12 +131,10 @@ public class VehicleSkillManager : MonoBehaviour
             grabbedPlayer.transform.position = transform.position + transform.forward * 2f + Vector3.up * 2f;
         }
     }
-    
     public void ApplyStun(float duration)
     {
         StartCoroutine(StunCoroutine(duration));
     }
-    
     System.Collections.IEnumerator StunCoroutine(float duration)
     {
         if (controller != null)
@@ -167,12 +154,10 @@ public class VehicleSkillManager : MonoBehaviour
         
         Debug.Log($"{gameObject.name} 스턴 해제");
     }
-    
     bool IsGrounded()
     {
         return Physics.Raycast(transform.position, Vector3.down, 1.5f);
     }
-    
     // ==================== 불도저 스킬 ====================
     void UseBuldozerSkill()
     {
@@ -180,7 +165,6 @@ public class VehicleSkillManager : MonoBehaviour
         hasShield = true;
         shieldTimer = skillData.bulldozerShieldDuration;
     }
-    
     void OnCollisionEnter(Collision collision)
     {
         if (hasShield && skillData.vehicleType == VehicleType.Bulldozer)
@@ -202,7 +186,6 @@ public class VehicleSkillManager : MonoBehaviour
             }
         }
     }
-    
     // ==================== 덤프트럭 스킬 ====================
     void UseDumpTruckSkill()
     {
@@ -251,7 +234,6 @@ public class VehicleSkillManager : MonoBehaviour
             dirtScript.Initialize(target, skillData.dumpTruckProjectileSpeed, skillData.dumpTruckSlowPercent);
         }
     }
-    
     // 야메 GUI 표시
     void OnGUI()
     {
@@ -298,7 +280,6 @@ public class VehicleSkillManager : MonoBehaviour
             GUI.Label(new Rect(10, yOffset + 65, 400, 30), $"🛡️ 쉴드 활성화: {shieldTimer:F1}초", style);
         }
     }
-    
     void OnDrawGizmosSelected()
     {
         if (skillData == null) return;

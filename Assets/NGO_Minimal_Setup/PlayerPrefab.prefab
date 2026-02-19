@@ -35,7 +35,7 @@ Transform:
   m_GameObject: {fileID: 61479568008417494}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 947, y: 521, z: -1496}
+  m_LocalPosition: {x: 0, y: 10, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -291,3 +291,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillManager
   ShowTopMostFoldoutHeaderGroup: 1
   skillData: {fileID: 11400000, guid: 1769cb29b442d2a47af08e62b4b8ade5, type: 2}
+  currentVehicleType:
+    m_InternalValue: 0
+  n_isGrabbing:
+    m_InternalValue: 0
+  n_hasShield:
+    m_InternalValue: 0

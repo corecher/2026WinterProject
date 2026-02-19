@@ -1,24 +1,21 @@
 using UnityEngine;
 using Unity.Netcode;
 using System.Collections;
-using System.Collections.Generic;
 
 public class SkillManager : NetworkBehaviour
 {
     [Header("스킬 설정")]
     [SerializeField] private VehicleSkillData skillData;
     
-    // 쿨다운은 로컬(UI표시용)과 서버(검증용) 양쪽에서 관리
-    private float currentCooldown = 0f; 
+    // 네트워크 동기화 변수들
+    public NetworkVariable<ChrState> currentVehicleType = new NetworkVariable<ChrState>(ChrState.excavator, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<bool> n_isGrabbing = new NetworkVariable<bool>(false);
+    public NetworkVariable<bool> n_hasShield = new NetworkVariable<bool>(false);
+    private NetworkVariable<NetworkObjectReference> n_grabbedPlayerRef = new NetworkVariable<NetworkObjectReference>();
 
-    // [동기화] 불도저 쉴드 상태 (서버가 쓰고 모두가 읽음)
-    private NetworkVariable<bool> isShieldActive = new NetworkVariable<bool>(false);
-
-    // [동기화] 현재 잡고 있는 대상의 NetworkObjectId (없으면 0)
-    private NetworkVariable<ulong> grabbedTargetId = new NetworkVariable<ulong>(0);
-
+    public float CurrentCooldown { get; private set; } = 0f;
     private Rigidbody rb;
-    private HeavyVehicleController controller;
+    private HeavyVehicleController controller; // 기존 차량 이동 스크립트
 
     public override void OnNetworkSpawn()
     {
@@ -28,89 +25,67 @@ public class SkillManager : NetworkBehaviour
 
     void Update()
     {
-        // 1. 쿨다운은 각자 돕니다 (UI 갱신용)
-        if (currentCooldown > 0)
+        // 내 로컬 플레이어만 입력을 처리함
+        if (!IsOwner) return;
+
+        if (CurrentCooldown > 0)
         {
-            currentCooldown -= Time.deltaTime;
+            CurrentCooldown -= Time.deltaTime;
         }
 
-        // 2. 내 캐릭터(IsOwner)만 입력을 처리
-        if (IsOwner)
+        // 스킬 사용 입력 (마우스 좌클릭)
+        if (Input.GetMouseButtonDown(0))
         {
-            HandleInput();
-        }
-        
-        // 3. [서버] 쉴드 타이머 처리
-        if (IsServer && isShieldActive.Value)
-        {
-            // (서버에서 별도 타이머 로직이 필요하거나, Coroutine으로 처리)
-            // 아래 Coroutine 방식 사용함
-        }
-    }
-
-    // 서버 권한으로 잡은 대상 위치 갱신 (매 프레임)
-    void FixedUpdate()
-    {
-        if (IsServer && grabbedTargetId.Value != 0)
-        {
-            if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(grabbedTargetId.Value, out NetworkObject targetObj))
+            if (n_isGrabbing.Value)
             {
-                // 위치 고정
-                Vector3 holdPos = transform.position + transform.forward * 2f + Vector3.up * 2f;
-                targetObj.transform.position = holdPos;
+                // 누군가 잡고 있다면 던지기 실행
+                ThrowGrabbedPlayerServerRpc();
             }
-            else
+            else if (CurrentCooldown <= 0)
             {
-                // 대상이 접속 끊음 등으로 사라지면 해제
-                grabbedTargetId.Value = 0;
+                // 쿨타임이 끝났다면 스킬 사용 요청
+                RequestUseSkillServerRpc();
             }
         }
     }
-
-    void HandleInput()
-    {
-        // 스킬 사용 요청
-        if (Input.GetMouseButtonDown(0) && currentCooldown <= 0)
-        {
-            // 잡고 있는 상태라면 던지기, 아니면 스킬 사용
-            if (grabbedTargetId.Value != 0)
-            {
-                ThrowTargetServerRpc();
-            }
-            else
-            {
-                RequestSkillServerRpc(); // 서버에게 "나 스킬 쓸래" 요청
-                currentCooldown = skillData.cooldownTime; // 로컬 쿨다운 즉시 적용 (반응성)
-            }
-        }
-    }
-
-    // ==================== 서버 로직 (ServerRpc) ====================
 
     [ServerRpc]
-    void RequestSkillServerRpc()
+    private void RequestUseSkillServerRpc()
     {
         if (skillData == null) return;
 
-        // 타입별 스킬 실행
-        switch (skillData.vehicleType)
+        switch (currentVehicleType.Value)
         {
-            case VehicleType.Excavator:
-                StartCoroutine(ExcavatorSkillRoutine());
-                break;
-            case VehicleType.Bulldozer:
-                StartCoroutine(BulldozerSkillRoutine());
-                break;
-            case VehicleType.DumpTruck:
-                DumpTruckSkill();
-                break;
+            case ChrState.excavator: UseExcavatorSkill(); break;
+            case ChrState.bulldozer: UseBulldozerSkill(); break;
+            case ChrState.dtruck:    UseDumpTruckSkill(); break;
         }
+
+        // 쿨다운 시작 알림 (ClientRpc)
+        SetCooldownClientRpc(skillData.cooldownTime);
     }
 
-    // --- 포크레인 ---
-    IEnumerator ExcavatorSkillRoutine()
+    [ClientRpc]
+    private void SetCooldownClientRpc(float time)
     {
-        // 딜레이 후 잡기 시도
+        if (IsOwner) CurrentCooldown = time;
+    }
+
+    [ServerRpc]
+    public void UpdateVehicleTypeServerRpc(ChrState newState)
+    {
+        currentVehicleType.Value = newState;
+        Debug.Log($"[서버] 플레이어 클래스 변경: {newState}");
+    }
+
+    #region 포크레인 (Excavator)
+    private void UseExcavatorSkill()
+    {
+        StartCoroutine(ExcavatorGrabRoutine());
+    }
+
+    IEnumerator ExcavatorGrabRoutine()
+    {
         yield return new WaitForSeconds(skillData.excavatorAnimationDelay);
 
         Collider[] hits = Physics.OverlapSphere(
@@ -121,206 +96,122 @@ public class SkillManager : NetworkBehaviour
         foreach (var hit in hits)
         {
             if (hit.gameObject == gameObject) continue;
-
-            // NetworkObject가 있는 대상만 잡을 수 있음
-            if (hit.TryGetComponent<NetworkObject>(out NetworkObject targetNetObj))
+            
+            if (hit.TryGetComponent<NetworkObject>(out var netObj))
             {
-                // 플레이어 태그 확인
                 if (hit.CompareTag("Player") || hit.GetComponent<HeavyVehicleController>() != null)
                 {
-                    grabbedTargetId.Value = targetNetObj.NetworkObjectId;
+                    n_grabbedPlayerRef.Value = netObj;
+                    n_isGrabbing.Value = true;
                     
-                    // 잡힌 대상 물리 끄기 (ClientRpc로 전파)
-                    SetTargetKinematicClientRpc(targetNetObj.NetworkObjectId, true);
-                    Debug.Log($"[Server] 잡음: {targetNetObj.NetworkObjectId}");
-                    break; 
+                    if (hit.TryGetComponent<Rigidbody>(out var targetRb))
+                    {
+                        targetRb.isKinematic = true;
+                    }
+                    yield break; // 성공적으로 잡았으므로 코루틴 종료
                 }
             }
         }
     }
 
     [ServerRpc]
-    void ThrowTargetServerRpc()
+    private void ThrowGrabbedPlayerServerRpc()
     {
-        if (grabbedTargetId.Value == 0) return;
+        if (!n_isGrabbing.Value) return;
 
-        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(grabbedTargetId.Value, out NetworkObject targetObj))
+        if (n_grabbedPlayerRef.Value.TryGet(out NetworkObject targetNetObj))
         {
-            // 1. 물리 다시 켜기
-            SetTargetKinematicClientRpc(targetObj.NetworkObjectId, false);
-
-            // 2. 던지는 힘 가하기 (Rigidbody가 있다면)
-            if (targetObj.TryGetComponent<Rigidbody>(out Rigidbody targetRb))
+            if (targetNetObj.TryGetComponent<Rigidbody>(out var targetRb))
             {
+                targetRb.isKinematic = false;
                 Vector3 throwDirection = transform.forward + Vector3.up * 0.5f;
                 targetRb.linearVelocity = throwDirection.normalized * skillData.excavatorThrowForce;
-            }
-
-            // 3. 스턴 걸기 (대상에게만 ClientRpc)
-            ClientRpcParams clientRpcParams = new ClientRpcParams
-            {
-                Send = new ClientRpcSendParams { TargetClientIds = new ulong[] { targetObj.OwnerClientId } }
-            };
-            ApplyStunClientRpc(skillData.excavatorStunDuration, clientRpcParams);
-        }
-
-        grabbedTargetId.Value = 0; // 잡기 해제
-    }
-
-    // --- 불도저 ---
-    IEnumerator BulldozerSkillRoutine()
-    {
-        isShieldActive.Value = true;
-        yield return new WaitForSeconds(skillData.bulldozerShieldDuration);
-        isShieldActive.Value = false;
-    }
-
-    // 충돌 처리는 서버에서만 확실하게 계산
-    void OnCollisionEnter(Collision collision)
-    {
-        if (!IsServer) return; // 서버만 처리
-
-        if (isShieldActive.Value && skillData.vehicleType == VehicleType.Bulldozer)
-        {
-            if (collision.gameObject.CompareTag("Player") || collision.gameObject.GetComponent<HeavyVehicleController>() != null)
-            {
-                if (collision.gameObject.TryGetComponent<Rigidbody>(out Rigidbody otherRb))
+                
+                if (targetNetObj.TryGetComponent<SkillManager>(out var targetSkill))
                 {
-                    // 내 속도 멈춤
+                    targetSkill.ApplyStunClientRpc(skillData.excavatorStunDuration);
+                }
+            }
+        }
+        n_isGrabbing.Value = false;
+    }
+    #endregion
+
+    #region 불도저 (Bulldozer)
+    private void UseBulldozerSkill()
+    {
+        n_hasShield.Value = true;
+        Invoke(nameof(DisableShield), skillData.bulldozerShieldDuration);
+    }
+
+    private void DisableShield() => n_hasShield.Value = false;
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (!IsServer) return;
+
+        if (n_hasShield.Value && currentVehicleType.Value == ChrState.bulldozer)
+        {
+            if (collision.gameObject.CompareTag("Player"))
+            {
+                if (collision.gameObject.TryGetComponent<Rigidbody>(out var otherRb))
+                {
                     rb.linearVelocity = Vector3.zero;
-                    
-                    // 상대 튕겨내기
-                    Vector3 pushDir = collision.transform.position - transform.position;
-                    pushDir.y = 0.5f; // 약간 위로
-                    otherRb.AddForce(pushDir.normalized * 20f, ForceMode.Impulse); // 강제로 밀어냄
+                    otherRb.linearVelocity += collision.relativeVelocity;
                 }
             }
         }
     }
+    #endregion
 
-    // --- 덤프트럭 ---
-    void DumpTruckSkill()
+    #region 덤프트럭 (DumpTruck)
+    private void UseDumpTruckSkill()
     {
-        if (skillData.dirtProjectilePrefab == null) return;
-
         Collider[] hits = Physics.OverlapSphere(transform.position, skillData.dumpTruckDetectionRadius);
-        List<NetworkObject> targets = new List<NetworkObject>();
+        Vector3 spawnPosition = transform.position - transform.forward * 0.5f + Vector3.up * 1f;
 
         foreach (var hit in hits)
         {
             if (hit.gameObject == gameObject) continue;
-            if ((hit.CompareTag("Player") || hit.GetComponent<HeavyVehicleController>() != null) 
-                && hit.TryGetComponent<NetworkObject>(out NetworkObject netObj))
+            if (hit.CompareTag("Player"))
             {
-                targets.Add(netObj);
-            }
-        }
-
-        Vector3 spawnPos = transform.position - transform.forward * 0.5f + Vector3.up * 1f;
-
-        foreach (var target in targets)
-        {
-            // 1. 서버에서 프리팹 생성
-            GameObject projectile = Instantiate(
-                skillData.dirtProjectilePrefab,
-                spawnPos,
-                Quaternion.identity
-            );
-
-            // 2. 네트워크 스폰 (중요! 그래야 클라이언트에도 보임)
-            NetworkObject projNetObj = projectile.GetComponent<NetworkObject>();
-            projNetObj.Spawn();
-
-            // 3. 투사체 초기화 (동기화 필요하므로 컴포넌트 함수 호출)
-            // 투사체 스크립트도 NetworkBehaviour여야 함
-            if (projectile.TryGetComponent<NetworkDirtProjectile>(out NetworkDirtProjectile dirtScript))
-            {
-                dirtScript.SetTarget(target.NetworkObjectId, skillData.dumpTruckProjectileSpeed);
+                GameObject projectile = Instantiate(skillData.dirtProjectilePrefab, spawnPosition, Quaternion.identity);
+                projectile.GetComponent<NetworkObject>().Spawn();
+                
+                if (projectile.TryGetComponent<DirtProjectile>(out var dirtScript))
+                {
+                    dirtScript.Initialize(hit.gameObject, skillData.dumpTruckProjectileSpeed, skillData.dumpTruckSlowPercent);
+                }
             }
         }
     }
-
-    // ==================== 클라이언트 로직 (ClientRpc) ====================
-
-    [ClientRpc]
-    void SetTargetKinematicClientRpc(ulong targetId, bool isKinematic)
-    {
-        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(targetId, out NetworkObject targetObj))
-        {
-            if (targetObj.TryGetComponent<Rigidbody>(out Rigidbody targetRb))
-            {
-                targetRb.isKinematic = isKinematic;
-            }
-        }
-    }
+    #endregion
 
     [ClientRpc]
-    void ApplyStunClientRpc(float duration, ClientRpcParams rpcParams = default)
+    public void ApplyStunClientRpc(float duration)
     {
-        // 이 함수는 스턴 당하는 대상 클라이언트에서만 실행됨
         StartCoroutine(StunCoroutine(duration));
     }
 
     IEnumerator StunCoroutine(float duration)
     {
         if (controller != null) controller.enabled = false;
-        Debug.Log("스턴 걸림!");
-
         yield return new WaitForSeconds(duration);
-        // 땅에 닿을 때까지 대기 (간단화)
-        yield return new WaitForSeconds(0.5f); 
-
+        yield return new WaitUntil(() => IsGrounded());
         if (controller != null) controller.enabled = true;
-        Debug.Log("스턴 해제!");
     }
 
-    // ==================== UI & Gizmos ====================
-    
-    void OnGUI()
+    private bool IsGrounded() => Physics.Raycast(transform.position, Vector3.down, 1.5f);
+
+    void LateUpdate()
     {
-        if (!IsOwner || skillData == null) return; // 내 화면에만 그림
-
-        GUIStyle style = new GUIStyle();
-        style.fontSize = 20;
-        style.fontStyle = FontStyle.Bold;
-        style.normal.textColor = Color.white;
-
-        float yOffset = 330;
-
-        GUI.color = new Color(0, 0, 0, 0.8f);
-        GUI.Box(new Rect(5, yOffset, 400, 120), "");
-        GUI.color = Color.white;
-
-        GUI.Label(new Rect(10, yOffset + 5, 400, 30), $"스킬: {skillData.skillName}", style);
-
-        if (currentCooldown > 0)
+        // 잡혀있는 플레이어 위치를 동기화 (서버에서 계산)
+        if (IsServer && n_isGrabbing.Value)
         {
-            style.normal.textColor = Color.red;
-            GUI.Label(new Rect(10, yOffset + 35, 400, 30), $"쿨다운: {currentCooldown:F1}초", style);
+            if (n_grabbedPlayerRef.Value.TryGet(out NetworkObject target))
+            {
+                target.transform.position = transform.position + transform.forward * 2f + Vector3.up * 2f;
+            }
         }
-        else
-        {
-            style.normal.textColor = Color.green;
-            GUI.Label(new Rect(10, yOffset + 35, 400, 30), "스킬 사용 가능! [좌클릭]", style);
-        }
-
-        style.normal.textColor = Color.white;
-
-        if (grabbedTargetId.Value != 0)
-        {
-            style.normal.textColor = Color.yellow;
-            GUI.Label(new Rect(10, yOffset + 65, 400, 30), "잡는 중! [클릭하여 던지기]", style);
-        }
-        else if (isShieldActive.Value)
-        {
-            style.normal.textColor = Color.cyan;
-            GUI.Label(new Rect(10, yOffset + 65, 400, 30), "🛡️ 쉴드 활성화됨", style);
-        }
-    }
-
-    void OnDrawGizmosSelected()
-    {
-        if (skillData == null) return;
-        // (기존 Gizmos 코드 유지)
     }
 }

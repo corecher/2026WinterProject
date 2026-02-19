@@ -35,7 +35,7 @@ public class PlayerMove : NetworkBehaviour
     [SerializeField] private float mass = 1000f;
     [SerializeField] private float drag = 0.5f;
     [SerializeField] private float angularDrag = 3f;
-    
+    private NetworkGameTimer timer;
     private Rigidbody rb;
     private bool isGrounded;
     private float lastJumpTime = -999f;
@@ -47,6 +47,7 @@ public class PlayerMove : NetworkBehaviour
     
     private float collisionSlowdownTimer = 0f;
     private bool isSlowedDown = false;
+    private bool isTimerAssigned = false;
 
     // 카메라 추적을 위해 로컬 플레이어 확인용 이벤트 (선택 사항)
     public override void OnNetworkSpawn()
@@ -57,6 +58,7 @@ public class PlayerMove : NetworkBehaviour
             // 여기에 카메라 연결 로직 등을 넣을 수 있습니다.
             // 예: Camera.main.GetComponent<FollowCamera>().target = this.transform;
             currentBoostGauge = maxBoostGauge;
+            TryFindTimer();
         }
     }
 
@@ -92,12 +94,46 @@ public class PlayerMove : NetworkBehaviour
             col.material = physicsMaterial;
         }
     }
-    
+    private void TryFindTimer()
+    {
+        // 1. 싱글톤 확인
+        timer = NetworkGameTimer.Instance;
+
+        // 2. 싱글톤에 없다면 씬의 모든 객체 중 검색 (비활성화된 객체 포함)
+        if (timer == null)
+        {
+            timer = GameObject.FindFirstObjectByType<NetworkGameTimer>();
+        }
+
+        if (timer != null)
+        {
+            isTimerAssigned = true;
+            Debug.Log($"[PlayerMove] 타이머 찾기 성공: {timer.name}");
+        }
+    }
     void Update()
     {
         // [중요] 내 캐릭터(IsOwner)가 아니면 입력을 받지 않습니다.
         if (!IsOwner) return;
+        if (!isTimerAssigned)
+    {
+        TryFindTimer();
+    }
 
+    // 타이머 체크 로직
+    if (isTimerAssigned && timer != null)
+    {
+        if (!timer.CanMove) 
+        {
+            // 물리 정지 (카운트다운 중 밀림 방지)
+            if (rb != null && rb.linearVelocity.sqrMagnitude > 0.01f)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+            return; // 입력 처리 중단
+        }
+    }
         bool wantsToBoost = Input.GetKey(KeyCode.LeftShift);
         
         isBoosting = wantsToBoost && currentBoostGauge > 0 && !isSlowedDown;
