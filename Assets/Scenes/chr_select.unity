@@ -479,9 +479,9 @@ GameObject:
   - component: {fileID: 259597413}
   - component: {fileID: 259597412}
   - component: {fileID: 259597411}
-  - component: {fileID: 259597410}
+  - component: {fileID: 259597415}
   m_Layer: 5
-  m_Name: chr_select
+  m_Name: ReadyButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -507,21 +507,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: -425}
   m_SizeDelta: {x: 600, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &259597410
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 259597408}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 990ac19ec0f61eb40b245d2c181b0e1d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  chrselect: {fileID: 1414699449}
-  chrselectbutton: {fileID: 259597412}
-  subject: {fileID: 1176990584}
 --- !u!114 &259597411
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -631,6 +616,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 259597408}
   m_CullTransparentMesh: 1
+--- !u!114 &259597415
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 259597408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7d4c378392295a44ae2265a4b6b8570, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ready_toggle
+  readyText: {fileID: 1414699449}
+  readyButton: {fileID: 259597412}
+  isReady: 0
 --- !u!1 &387183968
 GameObject:
   m_ObjectHideFlags: 0

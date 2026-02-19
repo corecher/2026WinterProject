@@ -1,0 +1,291 @@
+using UnityEngine;
+using Unity.Netcode; // 멀티플레이어 네임스페이스 추가
+
+[RequireComponent(typeof(Rigidbody))]
+// MonoBehaviour 대신 NetworkBehaviour를 상속받습니다.
+public class PlayerMove : NetworkBehaviour 
+{
+    [Header("이동 설정")]
+    [SerializeField] private float moveSpeed = 20f;
+    [SerializeField] private float acceleration = 100f;
+    
+    [Header("회전 설정")]
+    [SerializeField] private float rotationSpeed = 120f;
+    
+    [Header("점프 설정")]
+    [SerializeField] private float jumpForce = 15f;
+    [SerializeField] private float jumpCooldown = 0.5f;
+    [SerializeField] private float groundCheckDistance = 0.6f;
+    [SerializeField] private Vector3 groundCheckOffset = new Vector3(0, 0.1f, 0);
+    
+    [Header("부스트 설정")]
+    [SerializeField] private float boostSpeedMultiplier = 1.5f; 
+    [SerializeField] private float maxBoostGauge = 100f;
+    [SerializeField] private float boostRechargeRate = 8f; 
+    [SerializeField] private float boostConsumeRate = 25f; 
+    
+    [Header("충돌 페널티 설정")]
+    [SerializeField] private float collisionSlowdownDuration = 1.5f;
+    [SerializeField] private float collisionSlowdownMultiplier = 0.5f;
+    [SerializeField] private float maxGaugeLossPercent = 0.5f;
+    [SerializeField] private float minCollisionSpeed = 5f;
+    [SerializeField] private string obstacleTag = "Obstacle"; 
+    
+    [Header("물리 설정")]
+    [SerializeField] private float mass = 1000f;
+    [SerializeField] private float drag = 0.5f;
+    [SerializeField] private float angularDrag = 3f;
+    
+    private Rigidbody rb;
+    private bool isGrounded;
+    private float lastJumpTime = -999f;
+    private Collider col;
+    
+    // 네트워크 변수 대신 로컬 변수로 유지 (이동 로직은 클라이언트 주도)
+    private float currentBoostGauge;
+    private bool isBoosting;
+    
+    private float collisionSlowdownTimer = 0f;
+    private bool isSlowedDown = false;
+
+    // 카메라 추적을 위해 로컬 플레이어 확인용 이벤트 (선택 사항)
+    public override void OnNetworkSpawn()
+    {
+        // 내 캐릭터라면 초기화
+        if (IsOwner)
+        {
+            // 여기에 카메라 연결 로직 등을 넣을 수 있습니다.
+            // 예: Camera.main.GetComponent<FollowCamera>().target = this.transform;
+            currentBoostGauge = maxBoostGauge;
+        }
+    }
+
+    void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+        col = GetComponent<Collider>();
+        
+        rb.mass = mass;
+        // 멀티플레이어에서는 보간(Interpolate)이 켜져 있으면 다른 플레이어 움직임이 끊겨 보일 수 있으나
+        // NetworkTransform 설정에 따라 다릅니다. 일단 유지합니다.
+        rb.interpolation = RigidbodyInterpolation.Interpolate; 
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        rb.constraints = RigidbodyConstraints.None;
+        rb.useGravity = true;
+        
+        // 내 캐릭터가 아니면 물리에 의한 이동을 끄는 것이 좋습니다. (NetworkTransform이 위치를 잡아주므로)
+        // 하지만 ClientNetworkTransform을 쓴다면 Kinematic을 끄면 안됩니다.
+        // 일반적인 NetworkTransform 사용 시 아래 로직이 필요할 수 있습니다.
+        // if (!IsOwner) rb.isKinematic = true; 
+
+        rb.centerOfMass = new Vector3(0, -0.3f, 0);
+        
+        PhysicsMaterial physicsMaterial = new PhysicsMaterial("LowFriction");
+        physicsMaterial.dynamicFriction = 0.1f;
+        physicsMaterial.staticFriction = 0.1f;
+        physicsMaterial.bounciness = 0.1f;
+        physicsMaterial.frictionCombine = PhysicsMaterialCombine.Minimum;
+        physicsMaterial.bounceCombine = PhysicsMaterialCombine.Minimum;
+        
+        if (col != null)
+        {
+            col.material = physicsMaterial;
+        }
+    }
+    
+    void Update()
+    {
+        // [중요] 내 캐릭터(IsOwner)가 아니면 입력을 받지 않습니다.
+        if (!IsOwner) return;
+
+        bool wantsToBoost = Input.GetKey(KeyCode.LeftShift);
+        
+        isBoosting = wantsToBoost && currentBoostGauge > 0 && !isSlowedDown;
+        
+        if (isBoosting)
+        {
+            currentBoostGauge -= boostConsumeRate * Time.deltaTime;
+            if (currentBoostGauge < 0) currentBoostGauge = 0;
+        }
+        else
+        {
+            currentBoostGauge += boostRechargeRate * Time.deltaTime;
+            if (currentBoostGauge > maxBoostGauge) currentBoostGauge = maxBoostGauge;
+        }
+        
+        if (isSlowedDown)
+        {
+            collisionSlowdownTimer -= Time.deltaTime;
+            if (collisionSlowdownTimer <= 0) isSlowedDown = false;
+        }
+        
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            TryJump();
+        }
+    }
+    
+    void FixedUpdate()
+    {
+        // [중요] 내 캐릭터가 아니면 물리 연산을 직접 수행하지 않습니다.
+        if (!IsOwner) return;
+
+        CheckGrounded();
+        
+        float moveInput = 0f;
+        if (Input.GetKey(KeyCode.W)) moveInput = 1f;
+        if (Input.GetKey(KeyCode.S)) moveInput = -1f;
+        
+        float turnInput = 0f;
+        if (Input.GetKey(KeyCode.A)) turnInput = -1f;
+        if (Input.GetKey(KeyCode.D)) turnInput = 1f;
+        
+        if (Mathf.Abs(moveInput) > 0.01f)
+        {
+            float speedMultiplier = 1f;
+            
+            if (isBoosting) speedMultiplier = boostSpeedMultiplier;
+            if (isSlowedDown) speedMultiplier *= collisionSlowdownMultiplier;
+            
+            float currentAcceleration = acceleration * speedMultiplier;
+            float currentMaxSpeed = moveSpeed * speedMultiplier;
+            
+            Vector3 moveForce = transform.forward * moveInput * currentAcceleration * rb.mass;
+            rb.AddForce(moveForce, ForceMode.Force);
+            
+            Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
+            if (horizontalVelocity.magnitude > currentMaxSpeed)
+            {
+                horizontalVelocity = horizontalVelocity.normalized * currentMaxSpeed;
+                rb.linearVelocity = new Vector3(horizontalVelocity.x, rb.linearVelocity.y, horizontalVelocity.z);
+            }
+        }
+        
+        if (Mathf.Abs(turnInput) > 0.01f)
+        {
+            float rotation = turnInput * rotationSpeed * Time.fixedDeltaTime;
+            Quaternion deltaRotation = Quaternion.Euler(0f, rotation, 0f);
+            rb.MoveRotation(rb.rotation * deltaRotation);
+        }
+    }
+    
+    void CheckGrounded()
+    {
+        Vector3 origin = transform.position + groundCheckOffset;
+        RaycastHit hit;
+        isGrounded = Physics.Raycast(origin, Vector3.down, out hit, groundCheckDistance);
+        Debug.DrawRay(origin, Vector3.down * groundCheckDistance, isGrounded ? Color.green : Color.red);
+    }
+    
+    void TryJump()
+    {
+        if (isGrounded && Time.time >= lastJumpTime + jumpCooldown)
+        {
+            Vector3 vel = rb.linearVelocity;
+            vel.y = 0;
+            rb.linearVelocity = vel;
+            
+            rb.AddForce(Vector3.up * jumpForce, ForceMode.VelocityChange);
+            lastJumpTime = Time.time;
+        }
+    }
+    
+    void OnCollisionEnter(Collision collision)
+    {
+        // [중요] 충돌 로직도 내 컴퓨터에서 일어난 것만 처리합니다.
+        // 다른 클라이언트에서의 충돌은 위치 동기화로 해결됩니다.
+        if (!IsOwner) return;
+
+        if (collision.gameObject.CompareTag(obstacleTag))
+        {
+            float collisionSpeed = collision.relativeVelocity.magnitude;
+            
+            if (collisionSpeed >= minCollisionSpeed)
+            {
+                float speedRatio = Mathf.Clamp01(collisionSpeed / (moveSpeed * boostSpeedMultiplier));
+                float gaugeLoss = maxBoostGauge * maxGaugeLossPercent * speedRatio;
+                
+                currentBoostGauge -= gaugeLoss;
+                if (currentBoostGauge < 0) currentBoostGauge = 0;
+                
+                isSlowedDown = true;
+                collisionSlowdownTimer = collisionSlowdownDuration;
+                
+                rb.linearVelocity *= collisionSlowdownMultiplier;
+            }
+        }
+    }
+    
+    void OnGUI()
+    {
+        // [중요] 내 화면에만 UI를 그립니다. 안 그러면 모든 플레이어의 UI가 겹쳐 보입니다.
+        if (!IsOwner) return;
+
+        GUIStyle style = new GUIStyle();
+        style.fontSize = 22;
+        style.normal.textColor = Color.white;
+        style.fontStyle = FontStyle.Bold;
+        
+        // ... (나머지 GUI 코드는 동일) ...
+        // 편의를 위해 내부 코드는 생략하지만, 
+        // 기존 코드 그대로 두시면 됩니다.
+        
+        // 배경
+        GUI.color = new Color(0, 0, 0, 0.8f);
+        GUI.Box(new Rect(5, 5, 550, 320), "");
+        GUI.color = Color.white;
+        
+        // 속도 표시
+        if (isBoosting)
+        {
+            style.normal.textColor = Color.yellow;
+            GUI.Label(new Rect(10, 10, 550, 30), $"🔥 부스트 활성화! 속도: {rb.linearVelocity.magnitude:F2} m/s", style);
+            style.normal.textColor = Color.white;
+        }
+        else if (isSlowedDown)
+        {
+            style.normal.textColor = Color.red;
+            GUI.Label(new Rect(10, 10, 550, 30), $"💥 충돌 페널티! 속도: {rb.linearVelocity.magnitude:F2} m/s", style);
+            style.normal.textColor = Color.white;
+        }
+        else
+        {
+            GUI.Label(new Rect(10, 10, 550, 30), $"속도: {rb.linearVelocity.magnitude:F2} m/s", style);
+        }
+        
+        // 부스트 게이지 바
+        float gaugePercent = currentBoostGauge / maxBoostGauge;
+        
+        GUI.Label(new Rect(10, 40, 550, 30), $"부스트 게이지: {currentBoostGauge:F1} / {maxBoostGauge}", style);
+        
+        GUI.color = new Color(0.3f, 0.3f, 0.3f, 0.8f);
+        GUI.Box(new Rect(10, 70, 530, 30), "");
+        
+        if (gaugePercent > 0.5f) GUI.color = new Color(0, 1, 0, 0.8f);
+        else if (gaugePercent > 0.25f) GUI.color = new Color(1, 1, 0, 0.8f);
+        else GUI.color = new Color(1, 0, 0, 0.8f);
+        
+        GUI.Box(new Rect(10, 70, 530 * gaugePercent, 30), "");
+        GUI.color = Color.white;
+        
+        string gaugeStatus = "";
+        if (isBoosting) gaugeStatus = "⚡ 소모 중";
+        else if (currentBoostGauge >= maxBoostGauge) gaugeStatus = "✓ 충전 완료";
+        else gaugeStatus = "⟳ 충전 중...";
+        
+        GUI.Label(new Rect(10, 105, 550, 30), gaugeStatus, style);
+        
+        GUI.Label(new Rect(10, 135, 550, 30), $"지면: {(isGrounded ? "접촉 ✓" : "공중 ✗")}", style);
+        GUI.Label(new Rect(10, 165, 550, 30), $"최대 속도: {(isBoosting ? moveSpeed * boostSpeedMultiplier : moveSpeed):F1} m/s", style);
+        
+        string inputStatus = "";
+        if (Input.GetKey(KeyCode.W)) inputStatus += "[W] ";
+        if (Input.GetKey(KeyCode.S)) inputStatus += "[S] ";
+        if (Input.GetKey(KeyCode.A)) inputStatus += "[A] ";
+        if (Input.GetKey(KeyCode.D)) inputStatus += "[D] ";
+        if (Input.GetKey(KeyCode.Space)) inputStatus += "[SPACE] ";
+        if (Input.GetKey(KeyCode.LeftShift)) inputStatus += "[SHIFT 부스트] ";
+        
+        GUI.Label(new Rect(10, 195, 550, 30), $"입력: {(inputStatus.Length > 0 ? inputStatus : "없음")}", style);
+    }
+}

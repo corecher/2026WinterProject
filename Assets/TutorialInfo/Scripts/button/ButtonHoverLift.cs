@@ -97,7 +97,7 @@ public class ReadyToggleNetwork : NetworkBehaviour
         if (allReady && connectedClients.Count > 0)
         {
             // 씬 이름 확인 필수!
-            NetworkManager.Singleton.SceneManager.LoadScene("chr_select", UnityEngine.SceneManagement.LoadSceneMode.Single);
+            NetworkManager.Singleton.SceneManager.LoadScene("InGame", UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
     }
 

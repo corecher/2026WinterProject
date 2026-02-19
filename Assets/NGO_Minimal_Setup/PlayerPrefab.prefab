@@ -14,9 +14,11 @@ GameObject:
   - component: {fileID: 6006527149828855897}
   - component: {fileID: 1802788216290959937}
   - component: {fileID: 5575295803157774108}
-  - component: {fileID: 6312021638364067044}
   - component: {fileID: 7476612752437172564}
   - component: {fileID: -5118205405604871073}
+  - component: {fileID: -1917829662554224766}
+  - component: {fileID: 5761942263160202833}
+  - component: {fileID: 7177172130041341732}
   m_Layer: 0
   m_Name: PlayerPrefab
   m_TagString: Untagged
@@ -188,20 +190,6 @@ MonoBehaviour:
   SwitchTransformSpaceWhenParented: 0
   Interpolate: 1
   SlerpPosition: 0
---- !u!114 &6312021638364067044
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 61479568008417494}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 455521db0066b4b4280c34d2fdba6763, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.Multiplayer.Center.NetcodeForGameObjectsExample::Unity.Multiplayer.Center.NetcodeForGameObjectsExample.ClientAuthoritativeMovement
-  ShowTopMostFoldoutHeaderGroup: 1
-  Speed: 5
 --- !u!114 &7476612752437172564
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -230,3 +218,76 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   netIsReady:
     m_InternalValue: 0
+--- !u!54 &-1917829662554224766
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 61479568008417494}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!114 &5761942263160202833
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 61479568008417494}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca13c48b09f58c045b2dc2c89fc55b53, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMove
+  ShowTopMostFoldoutHeaderGroup: 1
+  moveSpeed: 10
+  acceleration: 50
+  rotationSpeed: 120
+  jumpForce: 15
+  jumpCooldown: 0.5
+  groundCheckDistance: 0.6
+  groundCheckOffset: {x: 0, y: 0.1, z: 0}
+  boostSpeedMultiplier: 1.5
+  maxBoostGauge: 100
+  boostRechargeRate: 8
+  boostConsumeRate: 25
+  collisionSlowdownDuration: 1.5
+  collisionSlowdownMultiplier: 0.5
+  maxGaugeLossPercent: 0.5
+  minCollisionSpeed: 5
+  obstacleTag: Obstacle
+  mass: 1000
+  drag: 0.5
+  angularDrag: 3
+--- !u!114 &7177172130041341732
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 61479568008417494}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 426724061223413499d05a571946e8c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkillManager
+  ShowTopMostFoldoutHeaderGroup: 1
+  skillData: {fileID: 11400000, guid: 1769cb29b442d2a47af08e62b4b8ade5, type: 2}
