@@ -4472,6 +4472,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HostButtonVisibility
   gameSceneName: chr_select
+  startButtonName: HostStartButton
 --- !u!4 &627576964
 Transform:
   m_ObjectHideFlags: 0
@@ -15461,7 +15462,7 @@ Transform:
   m_GameObject: {fileID: 1760792877}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -3, z: 0}
+  m_LocalPosition: {x: 0, y: 60, z: 1800}
   m_LocalScale: {x: 50, y: 1, z: 50}
   m_ConstrainProportionsScale: 0
   m_Children: []

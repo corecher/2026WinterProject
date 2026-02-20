@@ -9,10 +9,10 @@ public class HostButtonVisibility : MonoBehaviour
     [SerializeField] private string gameSceneName = "GameScene"; // 이동할 씬 이름
     private Button startButton;
     private bool isButtonActive = false;
-
+    [SerializeField]private string startButtonName;
     private void Awake()
     {
-        startButton = GameObject.Find("HostStartButton").GetComponent<Button>();
+        startButton = GameObject.Find(startButtonName).GetComponent<Button>();
         
         // 일단 끕니다.
         startButton.gameObject.SetActive(false);

@@ -18,7 +18,7 @@ GameObject:
   - component: {fileID: -5118205405604871073}
   - component: {fileID: -1917829662554224766}
   - component: {fileID: 5761942263160202833}
-  - component: {fileID: 7177172130041341732}
+  - component: {fileID: -7374943349999277369}
   m_Layer: 0
   m_Name: PlayerPrefab
   m_TagString: Untagged
@@ -35,7 +35,7 @@ Transform:
   m_GameObject: {fileID: 61479568008417494}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 10, z: 0}
+  m_LocalPosition: {x: 0, y: 100, z: 1800}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -216,6 +216,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ReadyToggleNetwork
   ShowTopMostFoldoutHeaderGroup: 1
+  nextScene: Desert
   netIsReady:
     m_InternalValue: 0
 --- !u!54 &-1917829662554224766
@@ -277,7 +278,7 @@ MonoBehaviour:
   mass: 1000
   drag: 0.5
   angularDrag: 3
---- !u!114 &7177172130041341732
+--- !u!114 &-7374943349999277369
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -286,14 +287,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 61479568008417494}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 426724061223413499d05a571946e8c0, type: 3}
+  m_Script: {fileID: 11500000, guid: dce8694798e1e1e4f82543fd58b4eb00, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SkillManager
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStats
   ShowTopMostFoldoutHeaderGroup: 1
-  skillData: {fileID: 11400000, guid: 1769cb29b442d2a47af08e62b4b8ade5, type: 2}
-  currentVehicleType:
-    m_InternalValue: 0
-  n_isGrabbing:
-    m_InternalValue: 0
-  n_hasShield:
+  Score:
     m_InternalValue: 0

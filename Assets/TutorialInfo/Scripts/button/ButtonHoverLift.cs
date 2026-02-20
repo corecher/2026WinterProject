@@ -9,6 +9,7 @@ public class ReadyToggleNetwork : NetworkBehaviour
     private Button readyButton;
     private TMP_Text readyText;
     private Image img;
+    [SerializeField] private string nextScene;
 
     public NetworkVariable<bool> netIsReady = new NetworkVariable<bool>(
         false, 
@@ -97,7 +98,7 @@ public class ReadyToggleNetwork : NetworkBehaviour
         if (allReady && connectedClients.Count > 0)
         {
             // 씬 이름 확인 필수!
-            NetworkManager.Singleton.SceneManager.LoadScene("InGame", UnityEngine.SceneManagement.LoadSceneMode.Single);
+            NetworkManager.Singleton.SceneManager.LoadScene(nextScene, UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
     }
 
