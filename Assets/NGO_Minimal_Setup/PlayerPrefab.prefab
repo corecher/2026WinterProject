@@ -231,7 +231,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 61479568008417494}
   serializedVersion: 5
-  m_Mass: 1
+  m_Mass: 20
   m_LinearDamping: 0
   m_AngularDamping: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -263,7 +263,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMove
   ShowTopMostFoldoutHeaderGroup: 1
-  moveSpeed: 10
+  moveSpeed: 100
   acceleration: 50
   rotationSpeed: 120
   jumpForce: 15
@@ -282,6 +282,9 @@ MonoBehaviour:
   mass: 1000
   drag: 0.5
   angularDrag: 3
+  normalFOV: 100
+  boostFOV: 150
+  fovChangeSpeed: 5
 --- !u!114 &-7374943349999277369
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -311,7 +314,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCameraSetup
   ShowTopMostFoldoutHeaderGroup: 1
   playerCamera: {fileID: 5933833212324563143}
-  audioListener: {fileID: 0}
+  audioListener: {fileID: 1502403321742624984}
 --- !u!114 &-3808874076193693055
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -324,6 +327,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a6a352fa7d9606d48bd37748cc1ed3aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerNetworkHandler
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!1 &7422123886959087762
 GameObject:
   m_ObjectHideFlags: 0

@@ -48,6 +48,11 @@ public class PlayerMove : NetworkBehaviour
     private float collisionSlowdownTimer = 0f;
     private bool isSlowedDown = false;
     private bool isTimerAssigned = false;
+    [Header("부스트 시야각(FOV) 설정")]
+    [SerializeField] private float normalFOV = 60f;      // 기본 시야각
+    [SerializeField] private float boostFOV = 80f;       // 부스트 시 시야각
+    [SerializeField] private float fovChangeSpeed = 5f;  // FOV가 변하는 속도
+    private Camera playerCamera;
 
     // 카메라 추적을 위해 로컬 플레이어 확인용 이벤트 (선택 사항)
     public override void OnNetworkSpawn()
@@ -93,6 +98,11 @@ public class PlayerMove : NetworkBehaviour
         {
             col.material = physicsMaterial;
         }
+        if (IsOwner)
+        { 
+            playerCamera = GetComponentInChildren<Camera>();
+            if (playerCamera != null) playerCamera.fieldOfView = normalFOV;
+        }
     }
     private void TryFindTimer()
     {
@@ -116,10 +126,10 @@ public class PlayerMove : NetworkBehaviour
         // [중요] 내 캐릭터(IsOwner)가 아니면 입력을 받지 않습니다.
         if (!IsOwner) return;
         if (!isTimerAssigned)
-    {
-        TryFindTimer();
-    }
-
+        {
+            TryFindTimer();
+        }
+        UpdateCameraFOV();
     // 타이머 체크 로직
     if (isTimerAssigned && timer != null)
     {
@@ -160,10 +170,18 @@ public class PlayerMove : NetworkBehaviour
             TryJump();
         }
     }
-    
+    void UpdateCameraFOV()
+{
+    if (playerCamera == null) return;
+
+    // 부스터 사용 여부에 따라 목표 FOV 설정
+    float targetFOV = isBoosting ? boostFOV : normalFOV;
+
+    // Lerp를 사용하여 부드럽게 FOV 변경
+    playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, targetFOV, Time.deltaTime * fovChangeSpeed);
+}
     void FixedUpdate()
     {
-        // [중요] 내 캐릭터가 아니면 물리 연산을 직접 수행하지 않습니다.
         if (!IsOwner) return;
 
         CheckGrounded();
@@ -179,16 +197,22 @@ public class PlayerMove : NetworkBehaviour
         if (Mathf.Abs(moveInput) > 0.01f)
         {
             float speedMultiplier = 1f;
-            
             if (isBoosting) speedMultiplier = boostSpeedMultiplier;
             if (isSlowedDown) speedMultiplier *= collisionSlowdownMultiplier;
             
             float currentAcceleration = acceleration * speedMultiplier;
             float currentMaxSpeed = moveSpeed * speedMultiplier;
-            
-            Vector3 moveForce = transform.forward * moveInput * currentAcceleration * rb.mass;
+
+            // 🔥 [핵심 수정] transform.forward에서 Y축 값을 제거하여 항상 지면과 평행한 방향을 구합니다.
+            Vector3 forward = transform.forward;
+            forward.y = 0; // 수직 성분 제거
+            forward.Normalize(); // 방향만 남기기
+
+            // 이제 캐릭터가 기울어져 있어도 항상 앞/뒤로만 힘이 가해집니다.
+            Vector3 moveForce = forward * moveInput * currentAcceleration * rb.mass;
             rb.AddForce(moveForce, ForceMode.Force);
             
+            // 속도 제한 로직
             Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
             if (horizontalVelocity.magnitude > currentMaxSpeed)
             {
@@ -197,9 +221,11 @@ public class PlayerMove : NetworkBehaviour
             }
         }
         
+        // 회전 로직
         if (Mathf.Abs(turnInput) > 0.01f)
         {
             float rotation = turnInput * rotationSpeed * Time.fixedDeltaTime;
+            // Y축으로만 회전하도록 강제 (기울어짐 방지)
             Quaternion deltaRotation = Quaternion.Euler(0f, rotation, 0f);
             rb.MoveRotation(rb.rotation * deltaRotation);
         }
