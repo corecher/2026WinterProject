@@ -3703,8 +3703,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61ca1a50cdf12e541896fe53cca4d5e0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkUISwitcher
-  lobbyUI: {fileID: 2068827895}
-  gameUI: {fileID: 1253877897}
+  titleUI: {fileID: 2068827895}
+  lobbyUI: {fileID: 1253877897}
 --- !u!1 &561543826
 GameObject:
   m_ObjectHideFlags: 0

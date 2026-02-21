@@ -4,16 +4,19 @@ using UnityEngine;
 public class NetworkUISwitcher : MonoBehaviour
 {
     [Header("UI Objects")]
-    [SerializeField] private GameObject lobbyUI; // 꺼질 UI (로비, 방 만들기 등)
-    [SerializeField] private GameObject gameUI;  // 켜질 UI (게임 화면, 조이스틱 등)
+    [SerializeField] private GameObject titleUI; 
+    [SerializeField] private GameObject lobbyUI;
 
     private void Start()
     {
-        // 초기 상태 설정: 로비는 켜고, 게임 UI는 끄기
-        lobbyUI.SetActive(true);
-        gameUI.SetActive(false);
+        bool isConnected = NetworkManager.Singleton != null && 
+                       (NetworkManager.Singleton.IsClient || NetworkManager.Singleton.IsServer);
 
-        // NetworkManager가 준비되면 이벤트 연결
+        // 2. 연결되어 있다면 로비 UI를, 아니라면 타이틀 UI를 보여줌
+        titleUI.SetActive(!isConnected);
+        lobbyUI.SetActive(isConnected);
+
+        // NetworkManager 이벤트 연결
         if (NetworkManager.Singleton != null)
         {
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
@@ -38,8 +41,8 @@ public class NetworkUISwitcher : MonoBehaviour
         if (clientId == NetworkManager.Singleton.LocalClientId)
         {
             Debug.Log("방 입장 성공! UI를 전환합니다.");
-            lobbyUI.SetActive(false);
-            gameUI.SetActive(true);
+            titleUI.SetActive(false);
+            lobbyUI.SetActive(true);
         }
     }
 
@@ -50,8 +53,8 @@ public class NetworkUISwitcher : MonoBehaviour
         if (clientId == NetworkManager.Singleton.LocalClientId)
         {
             Debug.Log("방에서 나갔습니다. 로비로 돌아갑니다.");
-            lobbyUI.SetActive(true);
-            gameUI.SetActive(false);
+            titleUI.SetActive(true);
+            lobbyUI.SetActive(false);
         }
     }
 }

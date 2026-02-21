@@ -2,11 +2,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Unity.Netcode;
-using System.Collections; // 코루틴 사용을 위해 필요
+using System.Collections;
+using UnityEngine.SceneManagement; // 씬 관리를 위해 추가
 
 public class ReadyToggleNetwork : NetworkBehaviour
 {
-    private Button readyButton;
+    [SerializeField] private Button readyButton;
     private TMP_Text readyText;
     private Image img;
     [SerializeField] private string nextScene;
@@ -19,45 +20,74 @@ public class ReadyToggleNetwork : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        // 내 캐릭터(IsOwner)인 경우에만 버튼을 찾으러 갑니다.
+        if (IsServer)
+        {
+            netIsReady.Value = false;
+        }
+
         if (IsOwner)
         {
-            StartCoroutine(WaitForUIAndConnect());
+            // 씬 로드 이벤트 구독 (씬이 바뀔 때마다 호출됨)
+            SceneManager.sceneLoaded += OnSceneLoaded;
+            // 첫 스폰 시에도 버튼을 찾아야 하므로 수동 호출
+            StartSearchUI();
         }
         
-        // 상태 변경 이벤트는 언제든 받을 수 있게 미리 연결
         netIsReady.OnValueChanged += OnReadyStateChanged;
     }
 
-    // UI가 켜질 때까지 기다리는 코루틴 함수
+    public override void OnNetworkDespawn()
+    {
+        netIsReady.OnValueChanged -= OnReadyStateChanged;
+        if (IsOwner)
+        {
+            // 이벤트 구독 해제 (메모리 누수 방지)
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+    }
+
+    // 씬이 로드될 때마다 실행되는 함수
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (IsOwner)
+        {
+            StartSearchUI();
+        }
+    }
+
+    private void StartSearchUI()
+    {
+        // 이전 씬의 버튼 참조가 남아있을 수 있으므로 초기화
+        readyButton = null;
+        StopAllCoroutines(); // 혹시 실행 중인 찾기 코루틴이 있다면 중지
+        StartCoroutine(WaitForUIAndConnect());
+    }
+
     IEnumerator WaitForUIAndConnect()
     {
-        // readyButton을 찾을 때까지 무한 반복
+        Debug.Log("🔍 ReadyButton을 찾는 중...");
+        
         while (readyButton == null)
         {
-            // 1. 버튼 찾기 시도
             GameObject btnObj = GameObject.Find("ReadyButton");
             
             if (btnObj != null)
             {
-                // 2. 찾았으면 컴포넌트 연결
                 readyButton = btnObj.GetComponent<Button>();
                 img = readyButton.GetComponent<Image>();
                 readyText = readyButton.GetComponentInChildren<TMP_Text>();
 
-                // 3. 버튼 기능 연결
                 readyButton.onClick.RemoveAllListeners();
                 readyButton.onClick.AddListener(OnClickToggle);
 
-                Debug.Log("✅ 드디어 ReadyButton을 찾아서 연결했습니다!");
-
-                // 4. 현재 상태에 맞춰 UI 즉시 갱신
                 UpdateUI(netIsReady.Value);
+                Debug.Log("✅ ReadyButton 연결 완료!");
             }
             else
             {
-                // 못 찾았으면 다음 프레임까지 대기 (UI가 켜질 때까지 기다림)
-                yield return null; 
+                // 너무 오래 못 찾을 경우를 대비해 일정 시간 후 종료하거나 
+                // 특정 씬이 아닐 경우 중단하는 로직을 넣을 수도 있습니다.
+                yield return new WaitForSeconds(0.5f); // 매 프레임보다 조금 여유 있게 찾기
             }
         }
     }
@@ -79,6 +109,8 @@ public class ReadyToggleNetwork : NetworkBehaviour
 
     private void CheckAllPlayersReady()
     {
+        if (!IsServer) return;
+
         var connectedClients = NetworkManager.Singleton.ConnectedClientsList;
         bool allReady = true;
 
@@ -87,7 +119,6 @@ public class ReadyToggleNetwork : NetworkBehaviour
             if (client.PlayerObject == null) continue;
             var script = client.PlayerObject.GetComponent<ReadyToggleNetwork>();
             
-            // 아직 스크립트 로딩이 덜 된 플레이어가 있으면 준비 안 된 것으로 처리
             if (script == null || !script.netIsReady.Value)
             {
                 allReady = false;
@@ -97,15 +128,27 @@ public class ReadyToggleNetwork : NetworkBehaviour
 
         if (allReady && connectedClients.Count > 0)
         {
-            // 씬 이름 확인 필수!
-            NetworkManager.Singleton.SceneManager.LoadScene(nextScene, UnityEngine.SceneManagement.LoadSceneMode.Single);
+            // 씬 전환 전 모든 상태 리셋
+            ResetAllPlayersReady();
+            NetworkManager.Singleton.SceneManager.LoadScene(nextScene, LoadSceneMode.Single);
+        }
+    }
+
+    private void ResetAllPlayersReady()
+    {
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            if (client.PlayerObject != null)
+            {
+                var script = client.PlayerObject.GetComponent<ReadyToggleNetwork>();
+                if (script != null) script.netIsReady.Value = false;
+            }
         }
     }
 
     private void OnReadyStateChanged(bool previous, bool current)
     {
-        // 버튼이 연결되어 있을 때만 UI 업데이트
-        if (IsOwner && readyButton != null)
+        if (IsOwner)
         {
             UpdateUI(current);
         }
@@ -123,7 +166,7 @@ public class ReadyToggleNetwork : NetworkBehaviour
         else
         {
             readyText.text = "준비 완료";
-            img.color = Color.green; // Hex 대신 간단히 Color 사용
+            img.color = Color.green;
         }
     }
 }

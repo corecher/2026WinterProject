@@ -10,7 +10,6 @@ public class FinishLine : NetworkBehaviour
     [SerializeField] private Vector3 startPosition = new Vector3(0, 1, 0);
     
     private bool isProcessingRoundEnd = false; // 중복 실행 방지
-
     private void OnTriggerEnter(Collider other)
     {
         if (!IsServer) return;

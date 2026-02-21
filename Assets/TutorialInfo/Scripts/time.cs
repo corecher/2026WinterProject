@@ -14,6 +14,8 @@ public class NetworkGameTimer : NetworkBehaviour
 
     [Header("설정")]
     public int starttime = 3;
+    [Header("시작 위치")]
+    [SerializeField] private Vector3 startPosition = new Vector3(0, 1, 0);
 
     private NetworkVariable<int> netCurrentTime = new NetworkVariable<int>(
         -1, 
@@ -36,7 +38,7 @@ public class NetworkGameTimer : NetworkBehaviour
 
         if (Timet != null) Timet.text = "다른 플레이어 대기 중...";
     }
-
+    
     public override void OnNetworkSpawn()
     {
         netCurrentTime.OnValueChanged += OnTimeValueChanged;
@@ -68,7 +70,12 @@ public class NetworkGameTimer : NetworkBehaviour
 
     IEnumerator ServerCountdown()
     {
-        yield return new WaitForSecondsRealtime(1.5f);
+        // 1. 모든 플레이어가 로드되었으므로, 시작 위치로 강제 텔레포트
+        Debug.Log("모든 플레이어를 시작 위치로 모읍니다.");
+        TeleportAllPlayers();
+
+        // 2. 텔레포트 후 위치 동기화가 확실히 되도록 잠시 대기
+        yield return new WaitForSecondsRealtime(1.0f);
 
         int current = starttime;
         while (current > 0)
@@ -78,12 +85,21 @@ public class NetworkGameTimer : NetworkBehaviour
             current--;
         }
 
-        // GO! (이제 CanMove가 true가 됩니다)
+        // GO!
         netCurrentTime.Value = 0;
-        
         yield return new WaitForSecondsRealtime(1.5f);
-
         netCurrentTime.Value = -99;
+    }
+    private void TeleportAllPlayers()
+    {
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            if (client.PlayerObject != null && client.PlayerObject.TryGetComponent<PlayerStats>(out var stats))
+            {
+                // PlayerStats에 있는 ClientRpc 호출
+                stats.TeleportPlayerClientRpc(startPosition);
+            }
+        }
     }
 
     private void OnTimeValueChanged(int previousValue, int newValue)
