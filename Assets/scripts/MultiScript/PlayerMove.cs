@@ -53,6 +53,10 @@ public class PlayerMove : NetworkBehaviour
     [SerializeField] private float boostFOV = 80f;       // 부스트 시 시야각
     [SerializeField] private float fovChangeSpeed = 5f;  // FOV가 변하는 속도
     private Camera playerCamera;
+    
+    private Animator animator;
+    private static readonly int JumpTrigger = Animator.StringToHash("Jump"); // 해시값을 사용해 성능 최적화
+    private static readonly int IsGroundedBool = Animator.StringToHash("IsGrounded");
 
     // 카메라 추적을 위해 로컬 플레이어 확인용 이벤트 (선택 사항)
     public override void OnNetworkSpawn()
@@ -71,7 +75,7 @@ public class PlayerMove : NetworkBehaviour
     {
         rb = GetComponent<Rigidbody>();
         col = GetComponent<Collider>();
-        
+        animator = GetComponentInChildren<Animator>();
         rb.mass = mass;
         // 멀티플레이어에서는 보간(Interpolate)이 켜져 있으면 다른 플레이어 움직임이 끊겨 보일 수 있으나
         // NetworkTransform 설정에 따라 다릅니다. 일단 유지합니다.
@@ -185,10 +189,13 @@ public class PlayerMove : NetworkBehaviour
         if (!IsOwner) return;
 
         CheckGrounded();
-        
+        if (animator != null)
+        {
+            animator.SetBool(IsGroundedBool, isGrounded);
+        }
         float moveInput = 0f;
-        if (Input.GetKey(KeyCode.W)) moveInput = 1f;
-        if (Input.GetKey(KeyCode.S)) moveInput = -1f;
+        if (Input.GetKey(KeyCode.S)) moveInput = 1f;
+        if (Input.GetKey(KeyCode.W)) moveInput = -1f;
         
         float turnInput = 0f;
         if (Input.GetKey(KeyCode.A)) turnInput = -1f;
@@ -249,6 +256,10 @@ public class PlayerMove : NetworkBehaviour
             
             rb.AddForce(Vector3.up * jumpForce, ForceMode.VelocityChange);
             lastJumpTime = Time.time;
+            if (animator != null)
+            {
+                animator.SetTrigger(JumpTrigger);
+            }
         }
     }
     
@@ -276,78 +287,5 @@ public class PlayerMove : NetworkBehaviour
                 rb.linearVelocity *= collisionSlowdownMultiplier;
             }
         }
-    }
-    
-    void OnGUI()
-    {
-        // [중요] 내 화면에만 UI를 그립니다. 안 그러면 모든 플레이어의 UI가 겹쳐 보입니다.
-        if (!IsOwner) return;
-
-        GUIStyle style = new GUIStyle();
-        style.fontSize = 22;
-        style.normal.textColor = Color.white;
-        style.fontStyle = FontStyle.Bold;
-        
-        // ... (나머지 GUI 코드는 동일) ...
-        // 편의를 위해 내부 코드는 생략하지만, 
-        // 기존 코드 그대로 두시면 됩니다.
-        
-        // 배경
-        GUI.color = new Color(0, 0, 0, 0.8f);
-        GUI.Box(new Rect(5, 5, 550, 320), "");
-        GUI.color = Color.white;
-        
-        // 속도 표시
-        if (isBoosting)
-        {
-            style.normal.textColor = Color.yellow;
-            GUI.Label(new Rect(10, 10, 550, 30), $"🔥 부스트 활성화! 속도: {rb.linearVelocity.magnitude:F2} m/s", style);
-            style.normal.textColor = Color.white;
-        }
-        else if (isSlowedDown)
-        {
-            style.normal.textColor = Color.red;
-            GUI.Label(new Rect(10, 10, 550, 30), $"💥 충돌 페널티! 속도: {rb.linearVelocity.magnitude:F2} m/s", style);
-            style.normal.textColor = Color.white;
-        }
-        else
-        {
-            GUI.Label(new Rect(10, 10, 550, 30), $"속도: {rb.linearVelocity.magnitude:F2} m/s", style);
-        }
-        
-        // 부스트 게이지 바
-        float gaugePercent = currentBoostGauge / maxBoostGauge;
-        
-        GUI.Label(new Rect(10, 40, 550, 30), $"부스트 게이지: {currentBoostGauge:F1} / {maxBoostGauge}", style);
-        
-        GUI.color = new Color(0.3f, 0.3f, 0.3f, 0.8f);
-        GUI.Box(new Rect(10, 70, 530, 30), "");
-        
-        if (gaugePercent > 0.5f) GUI.color = new Color(0, 1, 0, 0.8f);
-        else if (gaugePercent > 0.25f) GUI.color = new Color(1, 1, 0, 0.8f);
-        else GUI.color = new Color(1, 0, 0, 0.8f);
-        
-        GUI.Box(new Rect(10, 70, 530 * gaugePercent, 30), "");
-        GUI.color = Color.white;
-        
-        string gaugeStatus = "";
-        if (isBoosting) gaugeStatus = "⚡ 소모 중";
-        else if (currentBoostGauge >= maxBoostGauge) gaugeStatus = "✓ 충전 완료";
-        else gaugeStatus = "⟳ 충전 중...";
-        
-        GUI.Label(new Rect(10, 105, 550, 30), gaugeStatus, style);
-        
-        GUI.Label(new Rect(10, 135, 550, 30), $"지면: {(isGrounded ? "접촉 ✓" : "공중 ✗")}", style);
-        GUI.Label(new Rect(10, 165, 550, 30), $"최대 속도: {(isBoosting ? moveSpeed * boostSpeedMultiplier : moveSpeed):F1} m/s", style);
-        
-        string inputStatus = "";
-        if (Input.GetKey(KeyCode.W)) inputStatus += "[W] ";
-        if (Input.GetKey(KeyCode.S)) inputStatus += "[S] ";
-        if (Input.GetKey(KeyCode.A)) inputStatus += "[A] ";
-        if (Input.GetKey(KeyCode.D)) inputStatus += "[D] ";
-        if (Input.GetKey(KeyCode.Space)) inputStatus += "[SPACE] ";
-        if (Input.GetKey(KeyCode.LeftShift)) inputStatus += "[SHIFT 부스트] ";
-        
-        GUI.Label(new Rect(10, 195, 550, 30), $"입력: {(inputStatus.Length > 0 ? inputStatus : "없음")}", style);
     }
 }
