@@ -20,11 +20,15 @@ public class round : MonoBehaviour
 
         if (currentround == 2)
         {
+            round1B.color = Hex("#8BFFB2");
             round2B.color = Hex("#8BFFB2");
+            round3B.color = Hex("#FFFFFF");
         }
 
         if (currentround == 3)
         {
+            round1B.color = Hex("#8BFFB2");
+            round2B.color = Hex("#8BFFB2");
             round3B.color = Hex("#8BFFB2");
         }
     }
