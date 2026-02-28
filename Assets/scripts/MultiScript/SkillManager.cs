@@ -15,12 +15,12 @@ public class SkillManager : NetworkBehaviour
 
     public float CurrentCooldown { get; private set; } = 0f;
     private Rigidbody rb;
-    private HeavyVehicleController controller; // 기존 차량 이동 스크립트
+    private PlayerMove controller; // 기존 차량 이동 스크립트
 
     public override void OnNetworkSpawn()
     {
         rb = GetComponent<Rigidbody>();
-        controller = GetComponent<HeavyVehicleController>();
+        controller = GetComponent<PlayerMove>();
     }
 
     void Update()
@@ -48,7 +48,15 @@ public class SkillManager : NetworkBehaviour
             }
         }
     }
-
+    private void OnDrawGizmosSelected()
+    {
+        if (skillData == null) return;
+    
+        // 포크레인 잡기 범위 시각화 (빨간색)
+        Gizmos.color = Color.red;
+        Vector3 grabPos = transform.position + -transform.forward * skillData.excavatorGrabRange;
+        Gizmos.DrawWireSphere(grabPos, skillData.excavatorGrabRange * 0.5f);
+    }
     [ServerRpc]
     private void RequestUseSkillServerRpc()
     {
@@ -89,8 +97,8 @@ public class SkillManager : NetworkBehaviour
         yield return new WaitForSeconds(skillData.excavatorAnimationDelay);
 
         Collider[] hits = Physics.OverlapSphere(
-            transform.position + transform.forward * skillData.excavatorGrabRange * 0.5f,
-            skillData.excavatorGrabRange * 0.5f
+            transform.position + -transform.forward * skillData.excavatorGrabRange,
+            skillData.excavatorGrabRange*0.5f
         );
 
         foreach (var hit in hits)
@@ -99,7 +107,7 @@ public class SkillManager : NetworkBehaviour
             
             if (hit.TryGetComponent<NetworkObject>(out var netObj))
             {
-                if (hit.CompareTag("Player") || hit.GetComponent<HeavyVehicleController>() != null)
+                if (hit.CompareTag("Player") || hit.GetComponent<PlayerMove>() != null)
                 {
                     n_grabbedPlayerRef.Value = netObj;
                     n_isGrabbing.Value = true;
@@ -121,19 +129,35 @@ public class SkillManager : NetworkBehaviour
 
         if (n_grabbedPlayerRef.Value.TryGet(out NetworkObject targetNetObj))
         {
-            if (targetNetObj.TryGetComponent<Rigidbody>(out var targetRb))
+            // 1. 서버에서 잡기 상태 해제 (LateUpdate 위치 고정 중단)
+            n_isGrabbing.Value = false;
+
+            if (targetNetObj.TryGetComponent<SkillManager>(out var targetSkill))
             {
-                targetRb.isKinematic = false;
-                Vector3 throwDirection = transform.forward + Vector3.up * 0.5f;
-                targetRb.linearVelocity = throwDirection.normalized * skillData.excavatorThrowForce;
+                // 2. 타겟 플레이어(Owner)에게 직접 던져지라고 명령
+                Vector3 throwDir = -(transform.forward + Vector3.up * 0.5f).normalized;
+                float force = skillData.excavatorThrowForce;
                 
-                if (targetNetObj.TryGetComponent<SkillManager>(out var targetSkill))
-                {
-                    targetSkill.ApplyStunClientRpc(skillData.excavatorStunDuration);
-                }
+                targetSkill.ApplyThrowClientRpc(throwDir * force, skillData.excavatorStunDuration);
             }
         }
-        n_isGrabbing.Value = false;
+    }
+
+    // targetSkillManager 내부에 추가
+    [ClientRpc]
+    public void ApplyThrowClientRpc(Vector3 velocity, float stunDuration)
+    {
+        if (!IsOwner) return; // 오직 던져지는 당사자만 실행
+
+        // 물리 복구 및 힘 가하기
+        if (rb != null)
+        {
+            rb.isKinematic = false;
+            rb.linearVelocity = velocity; // 직접 속도 주입
+        }
+
+        // 스턴 코루틴 실행
+        StartCoroutine(StunCoroutine(stunDuration));
     }
     #endregion
 

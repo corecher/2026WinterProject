@@ -15,7 +15,7 @@ MonoBehaviour:
   skillName: 
   vehicleType: 0
   cooldownTime: 10
-  excavatorGrabRange: 5
+  excavatorGrabRange: 20
   excavatorThrowForce: 20
   excavatorStunDuration: 3
   excavatorAnimationDelay: 0.5
