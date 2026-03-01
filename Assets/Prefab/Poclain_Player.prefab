@@ -87,6 +87,7 @@ GameObject:
   - component: {fileID: 1430979372176487933}
   - component: {fileID: 6250140806619925981}
   - component: {fileID: 543167869686054354}
+  - component: {fileID: 4153921973374530610}
   m_Layer: 0
   m_Name: Poclain_Player
   m_TagString: Player
@@ -312,6 +313,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   Score:
     m_InternalValue: 0
+  resetTargetSceneName: chr_select
 --- !u!114 &8882609256662769975
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -398,6 +400,21 @@ MonoBehaviour:
     m_InternalValue: 0
   n_hasShield:
     m_InternalValue: 0
+--- !u!114 &4153921973374530610
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1617091467363294663}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fcdb798d644baf4e8c98a27d7bdcafa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerBoundaryCheck
+  ShowTopMostFoldoutHeaderGroup: 1
+  maxDistance: 250
+  anchorTag: TeleportAnchor
 --- !u!1 &1736014265970836618
 GameObject:
   m_ObjectHideFlags: 0
@@ -641,7 +658,7 @@ MonoBehaviour:
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
+  m_RenderPostProcessing: 1
   m_Antialiasing: 0
   m_AntialiasingQuality: 2
   m_StopNaN: 0
