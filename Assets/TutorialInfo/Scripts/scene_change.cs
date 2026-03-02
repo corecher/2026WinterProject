@@ -3,18 +3,10 @@ using UnityEngine.SceneManagement;
 
 public class scene_change : MonoBehaviour
 {
-    public void Onclick_Nextscene()
+    [SerializeField] private string sceneName;
+    public void GotoScene()
     {
-        Scene currentscene = SceneManager.GetActiveScene();
-        int Sceneindex = currentscene.buildIndex;
-            SceneManager.LoadScene(Sceneindex + 1);
-    }
-
-    public void Onclick_Prevscene()
-    {
-        Scene currentscene = SceneManager.GetActiveScene();
-        int Sceneindex = currentscene.buildIndex;
-        SceneManager.LoadScene(Sceneindex - 1);
+        SceneManager.LoadScene(sceneName);
     }
 
     public void Quit()
