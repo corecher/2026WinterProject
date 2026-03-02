@@ -26,7 +26,6 @@ public class NetworkGameTimer : NetworkBehaviour
     // 플레이어가 움직일 수 있는지 확인하는 프로퍼티
     // 값이 0이거나 -99(게임 중)일 때만 true를 반환합니다.
     public bool CanMove => netCurrentTime.Value == 0 || netCurrentTime.Value == -99;
-
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -94,10 +93,16 @@ public class NetworkGameTimer : NetworkBehaviour
     {
         foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
         {
-            if (client.PlayerObject != null && client.PlayerObject.TryGetComponent<PlayerStats>(out var stats))
+            if (client.PlayerObject != null)
             {
-                // PlayerStats에 있는 ClientRpc 호출
-                stats.TeleportPlayerClientRpc(startPosition);
+                // 서버에서도 직접 위치를 옮겨줍니다.
+                client.PlayerObject.transform.position = startPosition;
+
+                if (client.PlayerObject.TryGetComponent<PlayerStats>(out var stats))
+                {
+                    // 클라이언트들에게 텔레포트 명령을 보냅니다.
+                    stats.TeleportPlayerClientRpc(startPosition);
+                }
             }
         }
     }

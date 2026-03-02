@@ -314,6 +314,7 @@ MonoBehaviour:
   Score:
     m_InternalValue: 0
   resetTargetSceneName: chr_select
+  isCaughtThisRound: 0
 --- !u!114 &8882609256662769975
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -413,7 +414,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerBoundaryCheck
   ShowTopMostFoldoutHeaderGroup: 1
-  maxDistance: 250
+  maxDistance: 100
   anchorTag: TeleportAnchor
 --- !u!1 &1736014265970836618
 GameObject:
