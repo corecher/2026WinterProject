@@ -23,7 +23,6 @@ public class time : MonoBehaviour
             if(current == 0)
             {
                 Timet.text = "GO!";
-                Timet.fontSize += 20f;
                 yield return new WaitForSecondsRealtime(1f);
                 Timet.text = "";
                 Timet.enabled = false;
