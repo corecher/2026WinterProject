@@ -17,15 +17,15 @@ public class HeavyVehicleController : MonoBehaviour
     [SerializeField] private Vector3 groundCheckOffset = new Vector3(0, 0.1f, 0);
     
     [Header("부스트 설정")]
-    [SerializeField] private float boostSpeedMultiplier = 1.5f; 
+    [SerializeField] private float boostSpeedMultiplier = 1.5f; // 기본 속도의 50% 증가
     [SerializeField] private float maxBoostGauge = 100f;
-    [SerializeField] private float boostRechargeRate = 8f; // 초당 충전량
+    [SerializeField] private float boostRechargeRate = 8f; // 초당 충전량 (천천히 모임)
     [SerializeField] private float boostConsumeRate = 25f; // 초당 소모량
     
     [Header("충돌 페널티 설정 (장애물 구현 시 사용)")]
     [SerializeField] private float collisionSlowdownDuration = 1.5f;
     [SerializeField] private float collisionSlowdownMultiplier = 0.5f;
-    [SerializeField] private float maxGaugeLossPercent = 0.5f;
+    [SerializeField] private float maxGaugeLossPercent = 0.5f; // 최대 50%
     [SerializeField] private float minCollisionSpeed = 5f;
     [SerializeField] private string obstacleTag = "Obstacle"; // 장애물 태그
     
@@ -34,22 +34,30 @@ public class HeavyVehicleController : MonoBehaviour
     [SerializeField] private float drag = 0.5f;
     [SerializeField] private float angularDrag = 3f;
     
+    // 내부 변수
     private Rigidbody rb;
     private bool isGrounded;
     private float lastJumpTime = -999f;
     private Collider col;
     
+    // 부스트 관련
     private float currentBoostGauge;
     private bool isBoosting;
     
+    // 충돌 페널티 관련
     private float collisionSlowdownTimer = 0f;
     private bool isSlowedDown = false;
+    
+    // 각성 상태 참조
+    private RageGaugeManager rageManager;
     
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         col = GetComponent<Collider>();
+        rageManager = GetComponent<RageGaugeManager>();
         
+        // Rigidbody 설정
         rb.mass = mass;
         rb.linearDamping = drag;
         rb.angularDamping = angularDrag;
@@ -61,6 +69,7 @@ public class HeavyVehicleController : MonoBehaviour
         
         rb.centerOfMass = new Vector3(0, -0.3f, 0);
         
+        // Physics Material 생성
         PhysicsMaterial physicsMaterial = new PhysicsMaterial("LowFriction");
         physicsMaterial.dynamicFriction = 0.1f;
         physicsMaterial.staticFriction = 0.1f;
@@ -73,18 +82,32 @@ public class HeavyVehicleController : MonoBehaviour
             col.material = physicsMaterial;
         }
         
+        // 부스트 게이지 풀로 시작
         currentBoostGauge = maxBoostGauge;
         
+        Debug.Log("HeavyVehicleController 초기화 완료!");
     }
     
     void Update()
     {
+        // 부스트 입력 체크
         bool wantsToBoost = Input.GetKey(KeyCode.LeftShift);
         
-        isBoosting = wantsToBoost && currentBoostGauge > 0 && !isSlowedDown;
+        // 각성 상태 확인
+        bool isAwakened = rageManager != null && rageManager.IsAwakened();
         
-        if (isBoosting)
+        // 부스트 가능 여부 확인
+        isBoosting = wantsToBoost && (isAwakened || currentBoostGauge > 0) && !isSlowedDown;
+        
+        // 부스트 게이지 관리
+        if (isAwakened)
         {
+            // 각성 상태: 게이지 100% 고정
+            currentBoostGauge = maxBoostGauge;
+        }
+        else if (isBoosting)
+        {
+            // 부스트 사용 중 - 게이지 소모
             currentBoostGauge -= boostConsumeRate * Time.deltaTime;
             if (currentBoostGauge < 0)
             {
@@ -93,7 +116,7 @@ public class HeavyVehicleController : MonoBehaviour
         }
         else
         {
-            // 부스트 미사용시 게이지 천천히 충전
+            // 부스트 미사용 - 게이지 천천히 충전
             currentBoostGauge += boostRechargeRate * Time.deltaTime;
             if (currentBoostGauge > maxBoostGauge)
             {
@@ -101,7 +124,7 @@ public class HeavyVehicleController : MonoBehaviour
             }
         }
         
-        // 충돌 느려짐 타이머 (임시 아직 장애물 없음)
+        // 충돌 느려짐 타이머 (장애물 구현 시 작동)
         if (isSlowedDown)
         {
             collisionSlowdownTimer -= Time.deltaTime;
@@ -111,6 +134,7 @@ public class HeavyVehicleController : MonoBehaviour
             }
         }
         
+        // 점프 입력
         if (Input.GetKeyDown(KeyCode.Space))
         {
             TryJump();
@@ -119,26 +143,41 @@ public class HeavyVehicleController : MonoBehaviour
     
     void FixedUpdate()
     {
+        // 지면 체크
         CheckGrounded();
         
+        // 이동 입력
         float moveInput = 0f;
         if (Input.GetKey(KeyCode.W)) moveInput = 1f;
         if (Input.GetKey(KeyCode.S)) moveInput = -1f;
         
+        // 회전 입력
         float turnInput = 0f;
         if (Input.GetKey(KeyCode.A)) turnInput = -1f;
         if (Input.GetKey(KeyCode.D)) turnInput = 1f;
         
+        // 이동 처리
         if (Mathf.Abs(moveInput) > 0.01f)
         {
+            // 속도 배수 계산
             float speedMultiplier = 1f;
             
-            if (isBoosting)
+            // 각성 상태 확인
+            bool isAwakened = rageManager != null && rageManager.IsAwakened();
+            
+            // 각성 상태: 기본 속도 1.5배
+            if (isAwakened)
             {
-                speedMultiplier = boostSpeedMultiplier;
+                speedMultiplier = rageManager.GetSpeedMultiplier();
             }
             
-            // 충돌 페널티 적용 (임시로 해둠 아직 장애물 없음)
+            // 부스트 적용 (각성 상태에서도 적용됨)
+            if (isBoosting)
+            {
+                speedMultiplier *= boostSpeedMultiplier;
+            }
+            
+            // 충돌 페널티 적용 (장애물 구현 시)
             if (isSlowedDown)
             {
                 speedMultiplier *= collisionSlowdownMultiplier;
@@ -191,7 +230,7 @@ public class HeavyVehicleController : MonoBehaviour
         }
     }
     
-    // 장애물과 충돌 시 호출 (장애물에 "Obstacle" 태그 필요) 장애물없어서 GPT로 임시로 만듦
+    // 장애물과 충돌 시 호출 (장애물에 "Obstacle" 태그 필요)
     void OnCollisionEnter(Collision collision)
     {
         // 장애물 태그 확인
@@ -218,11 +257,12 @@ public class HeavyVehicleController : MonoBehaviour
                 
                 // 속도 즉시 감소
                 rb.linearVelocity *= collisionSlowdownMultiplier;
+                
+                Debug.Log($"장애물 충돌! 속도: {collisionSpeed:F1}, 게이지 감소: {gaugeLoss:F1}, 남은 게이지: {currentBoostGauge:F1}");
             }
         }
     }
     
-    //디버깅 편하려고 GPT시킨 GUI
     void OnGUI()
     {
         GUIStyle style = new GUIStyle();
@@ -298,5 +338,12 @@ public class HeavyVehicleController : MonoBehaviour
         if (Input.GetKey(KeyCode.LeftShift)) inputStatus += "[SHIFT 부스트] ";
         
         GUI.Label(new Rect(10, 195, 550, 30), $"입력: {(inputStatus.Length > 0 ? inputStatus : "없음")}", style);
+        
+        // 조작법 안내
+        style.fontSize = 18;
+        style.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
+        GUI.Label(new Rect(10, 230, 550, 25), "조작: WASD 이동 | SPACE 점프 | L-SHIFT 부스트", style);
+        GUI.Label(new Rect(10, 255, 550, 25), "부스트 게이지는 천천히 자동 충전됩니다", style);
+        GUI.Label(new Rect(10, 280, 550, 25), "장애물 충돌 시 속도 감소 & 게이지 최대 50% 손실", style);
     }
 }

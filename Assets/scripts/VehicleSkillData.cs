@@ -1,6 +1,7 @@
 
 using UnityEngine;
 
+// ==================== 스킬 데이터 (ScriptableObject) ====================
 [CreateAssetMenu(fileName = "New Vehicle Skill", menuName = "Racing Game/Vehicle Skill")]
 public class VehicleSkillData : ScriptableObject
 {
@@ -29,7 +30,7 @@ public class VehicleSkillData : ScriptableObject
 
 public enum VehicleType
 {
-    Excavator,    
-    Bulldozer,  
-    DumpTruck    
+    Excavator,
+    Bulldozer,
+    DumpTruck
 }

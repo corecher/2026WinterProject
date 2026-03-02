@@ -1,23 +1,28 @@
-using UnityEngine;
-
-
 public class VehicleSkillManager : MonoBehaviour
 {
     [Header("스킬 설정")]
     [SerializeField] private VehicleSkillData skillData;
+    
     private float currentCooldown = 0f;
     private bool isSkillActive = false;
+    
     private GameObject grabbedPlayer;
     private bool isGrabbing = false;
+    
     private float shieldTimer = 0f;
     private bool hasShield = false;
+    
     private Rigidbody rb;
     private HeavyVehicleController controller;
+    private RageGaugeManager rageManager;
+    
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         controller = GetComponent<HeavyVehicleController>();
+        rageManager = GetComponent<RageGaugeManager>();
     }
+    
     void Update()
     {
         if (currentCooldown > 0)
@@ -25,7 +30,9 @@ public class VehicleSkillManager : MonoBehaviour
             currentCooldown -= Time.deltaTime;
         }
         
-        if (Input.GetMouseButtonDown(0) && currentCooldown <= 0)
+        bool isAwakened = rageManager != null && rageManager.IsAwakened();
+        
+        if (isAwakened && Input.GetMouseButtonDown(0) && currentCooldown <= 0)
         {
             UseSkill();
         }
@@ -45,6 +52,7 @@ public class VehicleSkillManager : MonoBehaviour
             }
         }
     }
+    
     void UseSkill()
     {
         if (skillData == null) return;
@@ -62,15 +70,19 @@ public class VehicleSkillManager : MonoBehaviour
                 break;
         }
         
+        // 쿨다운 시작
         currentCooldown = skillData.cooldownTime;
     }
+    
     // ==================== 포크레인 스킬 ====================
     void UseExcavatorSkill()
     {
         Debug.Log("포크레인 스킬 발동!");
         
+        // 애니메이션 딜레이 후 실행
         Invoke(nameof(ExcavatorGrab), skillData.excavatorAnimationDelay);
     }
+    
     void ExcavatorGrab()
     {
         Collider[] hits = Physics.OverlapSphere(
@@ -100,6 +112,7 @@ public class VehicleSkillManager : MonoBehaviour
         
         Debug.Log("포크레인 스킬 실패 - 플레이어 없음");
     }
+    
     void ThrowGrabbedPlayer()
     {
         if (grabbedPlayer == null) return;
@@ -110,10 +123,11 @@ public class VehicleSkillManager : MonoBehaviour
             targetRb.isKinematic = false;
             
             Vector3 throwDirection = transform.forward + Vector3.up * 0.5f;
-            targetRb.linearVelocity = throwDirection.normalized * skillData.excavatorThrowForce;
+            targetRb.velocity = throwDirection.normalized * skillData.excavatorThrowForce;
             
             Debug.Log($"플레이어 던짐: {grabbedPlayer.name}");
             
+            // 던져진 플레이어 스턴 적용
             VehicleSkillManager targetSkill = grabbedPlayer.GetComponent<VehicleSkillManager>();
             if (targetSkill != null)
             {
@@ -124,19 +138,25 @@ public class VehicleSkillManager : MonoBehaviour
         grabbedPlayer = null;
         isGrabbing = false;
     }
+    
     void LateUpdate()
     {
+        // 포크레인이 플레이어를 붙잡고 있으면 따라오게
         if (isGrabbing && grabbedPlayer != null)
         {
             grabbedPlayer.transform.position = transform.position + transform.forward * 2f + Vector3.up * 2f;
         }
     }
+    
+    // 스턴 적용
     public void ApplyStun(float duration)
     {
         StartCoroutine(StunCoroutine(duration));
     }
+    
     System.Collections.IEnumerator StunCoroutine(float duration)
     {
+        // 컨트롤러 비활성화
         if (controller != null)
         {
             controller.enabled = false;
@@ -145,8 +165,10 @@ public class VehicleSkillManager : MonoBehaviour
         Debug.Log($"{gameObject.name} 스턴 - {duration}초");
         yield return new WaitForSeconds(duration);
         
+        // 지면에 닿았는지 확인 (추가 체크)
         yield return new WaitUntil(() => IsGrounded());
         
+        // 컨트롤러 재활성화
         if (controller != null)
         {
             controller.enabled = true;
@@ -154,10 +176,12 @@ public class VehicleSkillManager : MonoBehaviour
         
         Debug.Log($"{gameObject.name} 스턴 해제");
     }
+    
     bool IsGrounded()
     {
         return Physics.Raycast(transform.position, Vector3.down, 1.5f);
     }
+    
     // ==================== 불도저 스킬 ====================
     void UseBuldozerSkill()
     {
@@ -165,27 +189,34 @@ public class VehicleSkillManager : MonoBehaviour
         hasShield = true;
         shieldTimer = skillData.bulldozerShieldDuration;
     }
+    
     void OnCollisionEnter(Collision collision)
     {
+        // 불도저 쉴드 효과
         if (hasShield && skillData.vehicleType == VehicleType.Bulldozer)
         {
+            // 다른 플레이어와 충돌
             if (collision.gameObject.CompareTag("Player") || 
                 collision.gameObject.GetComponent<HeavyVehicleController>() != null)
             {
                 Rigidbody otherRb = collision.gameObject.GetComponent<Rigidbody>();
                 if (otherRb != null)
                 {
+                    // 자신이 받아야 할 충격량 계산
                     Vector3 impactVelocity = collision.relativeVelocity;
                     
-                    rb.linearVelocity = Vector3.zero;
+                    // 자신은 날아가지 않음
+                    rb.velocity = Vector3.zero;
                     
-                    otherRb.linearVelocity += impactVelocity;
+                    // 상대에게 충격량 부여
+                    otherRb.velocity += impactVelocity;
                     
                     Debug.Log($"불도저 쉴드 효과! 상대 밀어냄: {collision.gameObject.name}");
                 }
             }
         }
     }
+    
     // ==================== 덤프트럭 스킬 ====================
     void UseDumpTruckSkill()
     {
@@ -197,14 +228,17 @@ public class VehicleSkillManager : MonoBehaviour
             return;
         }
         
+        // 범위 내 모든 플레이어 감지
         Collider[] hits = Physics.OverlapSphere(transform.position, skillData.dumpTruckDetectionRadius);
         
         System.Collections.Generic.List<GameObject> targets = new System.Collections.Generic.List<GameObject>();
         
         foreach (var hit in hits)
         {
+            // 자기 자신 제외
             if (hit.gameObject == gameObject) continue;
             
+            // 플레이어만 추가
             if (hit.CompareTag("Player") || hit.GetComponent<HeavyVehicleController>() != null)
             {
                 targets.Add(hit.gameObject);
@@ -212,11 +246,13 @@ public class VehicleSkillManager : MonoBehaviour
         }
         
         Debug.Log($"감지된 플레이어 수: {targets.Count}");
-
-        Vector3 spawnPosition = transform.position 
-            - transform.forward * 0.5f  
-            + Vector3.up * 1f;   
         
+        // 덤프트럭 뒤쪽 위 위치 계산
+        Vector3 spawnPosition = transform.position 
+            - transform.forward * 2f  // 뒤쪽으로 2미터
+            + Vector3.up * 3f;        // 위로 3미터
+        
+        // 각 타겟마다 투사체 생성
         foreach (var target in targets)
         {
             GameObject projectile = Instantiate(
@@ -234,7 +270,8 @@ public class VehicleSkillManager : MonoBehaviour
             dirtScript.Initialize(target, skillData.dumpTruckProjectileSpeed, skillData.dumpTruckSlowPercent);
         }
     }
-    // 야메 GUI 표시
+    
+    // GUI 표시
     void OnGUI()
     {
         if (skillData == null) return;
@@ -246,18 +283,27 @@ public class VehicleSkillManager : MonoBehaviour
         
         float yOffset = 330; // HeavyVehicleController UI 아래쪽
         
+        // 각성 상태 확인
+        bool isAwakened = rageManager != null && rageManager.IsAwakened();
+        
+        // 각성 상태가 아니면 스킬 UI 표시 안 함
+        if (!isAwakened) return;
+        
         // 배경
         GUI.color = new Color(0, 0, 0, 0.8f);
         GUI.Box(new Rect(5, yOffset, 400, 120), "");
         GUI.color = Color.white;
         
         // 스킬 정보
-        GUI.Label(new Rect(10, yOffset + 5, 400, 30), $"스킬: {skillData.skillName}", style);
+        style.normal.textColor = Color.red;
+        GUI.Label(new Rect(10, yOffset + 5, 400, 30), $"⚡ 스킬: {skillData.skillName}", style);
+        
+        style.normal.textColor = Color.white;
         
         // 쿨다운 표시
         if (currentCooldown > 0)
         {
-            style.normal.textColor = Color.red;
+            style.normal.textColor = Color.yellow;
             GUI.Label(new Rect(10, yOffset + 35, 400, 30), $"쿨다운: {currentCooldown:F1}초", style);
         }
         else
@@ -280,6 +326,7 @@ public class VehicleSkillManager : MonoBehaviour
             GUI.Label(new Rect(10, yOffset + 65, 400, 30), $"🛡️ 쉴드 활성화: {shieldTimer:F1}초", style);
         }
     }
+    
     void OnDrawGizmosSelected()
     {
         if (skillData == null) return;
