@@ -191,7 +191,6 @@ public class HeavyVehicleController : MonoBehaviour
         }
     }
     
-    // 장애물과 충돌 시 호출 (장애물에 "Obstacle" 태그 필요) 장애물없어서 GPT로 임시로 만듦
     void OnCollisionEnter(Collision collision)
     {
         // 장애물 태그 확인
@@ -220,6 +219,11 @@ public class HeavyVehicleController : MonoBehaviour
                 rb.linearVelocity *= collisionSlowdownMultiplier;
             }
         }
+    }
+
+    public float GetBoostPercent()
+    {
+        return currentBoostGauge / maxBoostGauge;
     }
     
     //디버깅 편하려고 GPT시킨 GUI
