@@ -611,7 +611,7 @@ MonoBehaviour:
   boostRechargeRate: 8
   boostConsumeRate: 25
   maxRageGauge: 100
-  ragePerItem: 100
+  ragePerItem: 5
   awakenDuration: 20
   awakenSpeedMultiplier: 1.5
   ragePointTag: RagePoint
@@ -630,10 +630,6 @@ MonoBehaviour:
   normalFOV: 60
   boostFOV: 80
   fovChangeSpeed: 5
-  engineAudioSource: {fileID: 0}
-  minEnginePitch: 0.8
-  maxEnginePitch: 2.5
-  speedForMaxPitch: 30
   boostSfxIndex: 2
   awakenSfxIndex: 3
 --- !u!114 &5079099775937009426
