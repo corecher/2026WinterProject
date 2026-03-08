@@ -1,8 +1,7 @@
 using UnityEngine;
-using Unity.Netcode; // 멀티플레이어 네임스페이스 추가
+using Unity.Netcode;
 
 [RequireComponent(typeof(Rigidbody))]
-// MonoBehaviour 대신 NetworkBehaviour를 상속받습니다.
 public class PlayerMove : NetworkBehaviour 
 {
     [Header("이동 설정")]
@@ -23,6 +22,22 @@ public class PlayerMove : NetworkBehaviour
     [SerializeField] public float maxBoostGauge = 100f;
     [SerializeField] private float boostRechargeRate = 8f; 
     [SerializeField] private float boostConsumeRate = 25f; 
+
+    // ==========================================
+    // 💡 [분노/각성 추가] 설정
+    // ==========================================
+    [Header("분노 및 각성 설정")]
+    [SerializeField] public float maxRageGauge = 100f;     // 최대 분노 게이지
+    [SerializeField] private float ragePerItem = 100f;       // 아이템 1개당 증가량 (5%)
+    [SerializeField] private float awakenDuration = 20f;   // 각성 지속 시간
+    [SerializeField] private float awakenSpeedMultiplier = 1.5f; // 각성 시 기본 속도 증가량
+    [SerializeField] private string ragePointTag = "RagePoint";  // 분노 포인트 아이템 태그
+
+    public float currentRageGauge = 0f;
+    public bool isAwakened = false;
+    private float awakenTimer = 0f;
+    [SerializeField] private GameObject awakenEffectObject;
+    // ==========================================
     
     [Header("충돌 페널티 설정")]
     [SerializeField] private float collisionSlowdownDuration = 1.5f;
@@ -41,32 +56,29 @@ public class PlayerMove : NetworkBehaviour
     private float lastJumpTime = -999f;
     private Collider col;
     
-    // 네트워크 변수 대신 로컬 변수로 유지 (이동 로직은 클라이언트 주도)
     public float currentBoostGauge;
     private bool isBoosting;
     
     private float collisionSlowdownTimer = 0f;
     private bool isSlowedDown = false;
     private bool isTimerAssigned = false;
+    
     [Header("부스트 시야각(FOV) 설정")]
-    [SerializeField] private float normalFOV = 60f;      // 기본 시야각
-    [SerializeField] private float boostFOV = 80f;       // 부스트 시 시야각
-    [SerializeField] private float fovChangeSpeed = 5f;  // FOV가 변하는 속도
+    [SerializeField] private float normalFOV = 60f;
+    [SerializeField] private float boostFOV = 80f;
+    [SerializeField] private float fovChangeSpeed = 5f;
     private Camera playerCamera;
     
     private Animator animator;
-    private static readonly int JumpTrigger = Animator.StringToHash("Jump"); // 해시값을 사용해 성능 최적화
+    private static readonly int JumpTrigger = Animator.StringToHash("Jump");
     private static readonly int IsGroundedBool = Animator.StringToHash("IsGrounded");
 
-    // 카메라 추적을 위해 로컬 플레이어 확인용 이벤트 (선택 사항)
     public override void OnNetworkSpawn()
     {
-        // 내 캐릭터라면 초기화
         if (IsOwner)
         {
-            // 여기에 카메라 연결 로직 등을 넣을 수 있습니다.
-            // 예: Camera.main.GetComponent<FollowCamera>().target = this.transform;
             currentBoostGauge = maxBoostGauge;
+            currentRageGauge = 0f; // 초기화
             TryFindTimer();
         }
     }
@@ -75,20 +87,13 @@ public class PlayerMove : NetworkBehaviour
     {
         rb = GetComponent<Rigidbody>();
         col = GetComponent<Collider>();
-        animator = GetComponentInChildren<Animator>();
+        animator = GetComponent<Animator>();
         rb.mass = mass;
-        // 멀티플레이어에서는 보간(Interpolate)이 켜져 있으면 다른 플레이어 움직임이 끊겨 보일 수 있으나
-        // NetworkTransform 설정에 따라 다릅니다. 일단 유지합니다.
         rb.interpolation = RigidbodyInterpolation.Interpolate; 
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.constraints = RigidbodyConstraints.None;
         rb.useGravity = true;
         
-        // 내 캐릭터가 아니면 물리에 의한 이동을 끄는 것이 좋습니다. (NetworkTransform이 위치를 잡아주므로)
-        // 하지만 ClientNetworkTransform을 쓴다면 Kinematic을 끄면 안됩니다.
-        // 일반적인 NetworkTransform 사용 시 아래 로직이 필요할 수 있습니다.
-        // if (!IsOwner) rb.isKinematic = true; 
-
         rb.centerOfMass = new Vector3(0, -0.3f, 0);
         
         PhysicsMaterial physicsMaterial = new PhysicsMaterial("LowFriction");
@@ -98,101 +103,106 @@ public class PlayerMove : NetworkBehaviour
         physicsMaterial.frictionCombine = PhysicsMaterialCombine.Minimum;
         physicsMaterial.bounceCombine = PhysicsMaterialCombine.Minimum;
         
-        if (col != null)
-        {
-            col.material = physicsMaterial;
-        }
+        if (col != null) col.material = physicsMaterial;
+        
         if (IsOwner)
         { 
             playerCamera = GetComponentInChildren<Camera>();
             if (playerCamera != null) playerCamera.fieldOfView = normalFOV;
         }
     }
+
     private void TryFindTimer()
     {
-        // 1. 싱글톤 확인
         timer = NetworkGameTimer.Instance;
-
-        // 2. 싱글톤에 없다면 씬의 모든 객체 중 검색 (비활성화된 객체 포함)
-        if (timer == null)
-        {
-            timer = GameObject.FindFirstObjectByType<NetworkGameTimer>();
-        }
-
-        if (timer != null)
-        {
-            isTimerAssigned = true;
-            Debug.Log($"[PlayerMove] 타이머 찾기 성공: {timer.name}");
-        }
+        if (timer == null) timer = GameObject.FindFirstObjectByType<NetworkGameTimer>();
+        if (timer != null) isTimerAssigned = true;
     }
+
     void Update()
     {
-        // [중요] 내 캐릭터(IsOwner)가 아니면 입력을 받지 않습니다.
         if (!IsOwner) return;
-        if (!isTimerAssigned)
-        {
-            TryFindTimer();
-        }
+        if (!isTimerAssigned) TryFindTimer();
+        
         UpdateCameraFOV();
-    // 타이머 체크 로직
-    if (isTimerAssigned && timer != null)
-    {
-        if (!timer.CanMove) 
+
+        if (isTimerAssigned && timer != null && !timer.CanMove) 
         {
-            // 물리 정지 (카운트다운 중 밀림 방지)
             if (rb != null && rb.linearVelocity.sqrMagnitude > 0.01f)
             {
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
             }
-            return; // 입력 처리 중단
+            return;
         }
-    }
+
         bool wantsToBoost = Input.GetKey(KeyCode.LeftShift);
         
-        isBoosting = wantsToBoost && currentBoostGauge > 0 && !isSlowedDown;
-        
-        if (isBoosting)
+        // ==========================================
+        // 💡 [분노/각성 추가] 게이지 및 스킬 처리
+        // ==========================================
+        if (isAwakened)
         {
-            currentBoostGauge -= boostConsumeRate * Time.deltaTime;
-            if (currentBoostGauge < 0) currentBoostGauge = 0;
+            // 각성 중: 부스트 100% 고정, 타이머 차감
+            currentBoostGauge = maxBoostGauge;
+            isBoosting = wantsToBoost && !isSlowedDown; // 쉬프트 누르면 속도 효과 적용
+
+            awakenTimer -= Time.deltaTime;
+            if (awakenTimer <= 0)
+            {
+                isAwakened = false;
+                currentRageGauge = 0f; // 종료 시 분노 게이지 초기화
+                Debug.Log("각성 상태 종료!");
+            }
         }
         else
         {
-            currentBoostGauge += boostRechargeRate * Time.deltaTime;
-            if (currentBoostGauge > maxBoostGauge) currentBoostGauge = maxBoostGauge;
+            // 평상시: 기존 부스트 로직
+            isBoosting = wantsToBoost && currentBoostGauge > 0 && !isSlowedDown;
+            
+            if (isBoosting)
+            {
+                currentBoostGauge -= boostConsumeRate * Time.deltaTime;
+                if (currentBoostGauge < 0) currentBoostGauge = 0;
+            }
+            else
+            {
+                currentBoostGauge += boostRechargeRate * Time.deltaTime;
+                if (currentBoostGauge > maxBoostGauge) currentBoostGauge = maxBoostGauge;
+            }
         }
-        
+        // ==========================================
+
         if (isSlowedDown)
         {
             collisionSlowdownTimer -= Time.deltaTime;
             if (collisionSlowdownTimer <= 0) isSlowedDown = false;
         }
-        
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (awakenEffectObject != null)
         {
-            TryJump();
+            // 현재 오브젝트의 켜짐/꺼짐 상태가 isAwakened 상태와 다를 때만 SetActive 실행 (성능 최적화)
+            if (awakenEffectObject.activeSelf != isAwakened)
+            {
+                awakenEffectObject.SetActive(isAwakened);
+            }
         }
+        if (Input.GetKeyDown(KeyCode.Space)) TryJump();
     }
+
     void UpdateCameraFOV()
-{
-    if (playerCamera == null) return;
+    {
+        if (playerCamera == null) return;
+        float targetFOV = isBoosting ? boostFOV : normalFOV;
+        playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, targetFOV, Time.deltaTime * fovChangeSpeed);
+    }
 
-    // 부스터 사용 여부에 따라 목표 FOV 설정
-    float targetFOV = isBoosting ? boostFOV : normalFOV;
-
-    // Lerp를 사용하여 부드럽게 FOV 변경
-    playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, targetFOV, Time.deltaTime * fovChangeSpeed);
-}
     void FixedUpdate()
     {
         if (!IsOwner) return;
 
         CheckGrounded();
-        if (animator != null)
-        {
-            animator.SetBool(IsGroundedBool, isGrounded);
-        }
+        if (animator != null) animator.SetBool(IsGroundedBool, isGrounded);
+        
         float moveInput = 0f;
         if (Input.GetKey(KeyCode.S)) moveInput = 1f;
         if (Input.GetKey(KeyCode.W)) moveInput = -1f;
@@ -203,23 +213,30 @@ public class PlayerMove : NetworkBehaviour
         
         if (Mathf.Abs(moveInput) > 0.01f)
         {
+            // ==========================================
+            // 💡 [분노/각성 추가] 이동 속도 배율 처리
+            // ==========================================
             float speedMultiplier = 1f;
-            if (isBoosting) speedMultiplier = boostSpeedMultiplier;
+            
+            // 각성 상태면 기본 속도 1.5배 증가
+            if (isAwakened) speedMultiplier *= awakenSpeedMultiplier; 
+            
+            // 부스트 중이면 부스트 배율 곱하기 (각성 중 부스트 시 속도 엄청 빨라짐)
+            if (isBoosting) speedMultiplier *= boostSpeedMultiplier; 
+            
+            // 충돌 감속 처리
             if (isSlowedDown) speedMultiplier *= collisionSlowdownMultiplier;
             
             float currentAcceleration = acceleration * speedMultiplier;
             float currentMaxSpeed = moveSpeed * speedMultiplier;
 
-            // 🔥 [핵심 수정] transform.forward에서 Y축 값을 제거하여 항상 지면과 평행한 방향을 구합니다.
             Vector3 forward = transform.forward;
-            forward.y = 0; // 수직 성분 제거
-            forward.Normalize(); // 방향만 남기기
+            forward.y = 0; 
+            forward.Normalize(); 
 
-            // 이제 캐릭터가 기울어져 있어도 항상 앞/뒤로만 힘이 가해집니다.
             Vector3 moveForce = forward * moveInput * currentAcceleration * rb.mass;
             rb.AddForce(moveForce, ForceMode.Force);
             
-            // 속도 제한 로직
             Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
             if (horizontalVelocity.magnitude > currentMaxSpeed)
             {
@@ -228,11 +245,9 @@ public class PlayerMove : NetworkBehaviour
             }
         }
         
-        // 회전 로직
         if (Mathf.Abs(turnInput) > 0.01f)
         {
             float rotation = turnInput * rotationSpeed * Time.fixedDeltaTime;
-            // Y축으로만 회전하도록 강제 (기울어짐 방지)
             Quaternion deltaRotation = Quaternion.Euler(0f, rotation, 0f);
             rb.MoveRotation(rb.rotation * deltaRotation);
         }
@@ -243,10 +258,9 @@ public class PlayerMove : NetworkBehaviour
         Vector3 origin = transform.position + groundCheckOffset;
         RaycastHit hit;
         isGrounded = Physics.Raycast(origin, Vector3.down, out hit, groundCheckDistance);
-        Debug.DrawRay(origin, Vector3.down * groundCheckDistance, isGrounded ? Color.green : Color.red);
     }
     
-    void TryJump()
+    public void TryJump()
     {
         if (isGrounded && Time.time >= lastJumpTime + jumpCooldown)
         {
@@ -256,17 +270,12 @@ public class PlayerMove : NetworkBehaviour
             
             rb.AddForce(Vector3.up * jumpForce, ForceMode.VelocityChange);
             lastJumpTime = Time.time;
-            if (animator != null)
-            {
-                animator.SetTrigger(JumpTrigger);
-            }
+            if (animator != null) animator.SetTrigger(JumpTrigger);
         }
     }
-    
+
     void OnCollisionEnter(Collision collision)
     {
-        // [중요] 충돌 로직도 내 컴퓨터에서 일어난 것만 처리합니다.
-        // 다른 클라이언트에서의 충돌은 위치 동기화로 해결됩니다.
         if (!IsOwner) return;
 
         if (collision.gameObject.CompareTag(obstacleTag))
@@ -278,14 +287,53 @@ public class PlayerMove : NetworkBehaviour
                 float speedRatio = Mathf.Clamp01(collisionSpeed / (moveSpeed * boostSpeedMultiplier));
                 float gaugeLoss = maxBoostGauge * maxGaugeLossPercent * speedRatio;
                 
-                currentBoostGauge -= gaugeLoss;
-                if (currentBoostGauge < 0) currentBoostGauge = 0;
+                // 각성 상태가 아닐 때만 부스트 게이지 깎임
+                if (!isAwakened) 
+                {
+                    currentBoostGauge -= gaugeLoss;
+                    if (currentBoostGauge < 0) currentBoostGauge = 0;
+                }
                 
                 isSlowedDown = true;
                 collisionSlowdownTimer = collisionSlowdownDuration;
-                
                 rb.linearVelocity *= collisionSlowdownMultiplier;
             }
         }
+    }
+
+    // ==========================================
+    // 💡 [분노/각성 추가] Trigger, 로직, 스킬 함수
+    // ==========================================
+    void OnTriggerEnter(Collider other)
+    {
+        if (!IsOwner) return;
+
+        // 분노 아이템 획득 처리
+        if (other.CompareTag(ragePointTag))
+        {
+            if (!isAwakened)
+            {
+                currentRageGauge += ragePerItem; // 5% 증가
+                
+                if (currentRageGauge >= maxRageGauge)
+                {
+                    StartAwaken();
+                }
+            }
+
+            // 아이템 파괴 (로컬에서 끄거나, ServerRpc로 완전 파괴)
+            // 맵에 뿌려진 아이템이 NetworkObject라면 ServerRpc를 호출해 파괴해야 모든 사람 화면에서 사라집니다.
+            other.gameObject.SetActive(false); 
+        }
+    }
+
+    private void StartAwaken()
+    {
+        currentRageGauge = maxRageGauge;
+        isAwakened = true;
+        awakenTimer = awakenDuration;
+        currentBoostGauge = maxBoostGauge; // 즉시 부스트 풀충전
+        
+        Debug.Log("각성 상태 돌입! 20초간 기본 속도 증가 & 스킬 사용 가능");
     }
 }

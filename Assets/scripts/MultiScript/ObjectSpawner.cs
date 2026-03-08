@@ -29,7 +29,7 @@ public class ObjectSpawner : NetworkBehaviour
             // 1. 범위 내 랜덤 위치 계산
             Vector3 randomPos = new Vector3(
                 Random.Range(spawnAreaCenter.x - spawnAreaSize.x / 2, spawnAreaCenter.x + spawnAreaSize.x / 2),
-                spawnAreaCenter.y, 
+                Random.Range(spawnAreaCenter.y - spawnAreaSize.y / 2, spawnAreaCenter.y + spawnAreaSize.y / 2), 
                 Random.Range(spawnAreaCenter.z - spawnAreaSize.z / 2, spawnAreaCenter.z + spawnAreaSize.z / 2)
             );
 

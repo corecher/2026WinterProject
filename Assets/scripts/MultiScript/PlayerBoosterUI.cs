@@ -1,13 +1,14 @@
 using UnityEngine;
-using UnityEngine.UI; // Image 컴ポ넌트 사용을 위해 필수
+using UnityEngine.UI; 
 using TMPro;
 using Unity.Netcode;
 
 public class PlayerBoostUI : MonoBehaviour
 {
     [Header("UI 연결")]
-    // 💡 Slider 대신 Image를 가져옵니다.
     [SerializeField] private Image boostFillImage;
+    // 💡 분노 게이지 UI 연결을 위한 변수 추가
+    [SerializeField] private Image rageFillImage; 
 
     private PlayerMove localPlayer;
 
@@ -38,19 +39,36 @@ public class PlayerBoostUI : MonoBehaviour
 
     private void UpdateUI()
     {
-        // 💡 Image 컴포넌트가 연결되어 있는지 확인
-        if (localPlayer == null || boostFillImage == null) return;
+        if (localPlayer == null) return;
 
-        // 3. fillAmount 계산 (0.0 ~ 1.0)
-        // PlayerMove의 maxBoostGauge는 public이어야 합니다.
-        // 안전을 위해 0으로 나누는 것을 방지합니다.
-        float maxGauge = localPlayer.maxBoostGauge > 0 ? localPlayer.maxBoostGauge : 100f;
-        float currentGauge = localPlayer.currentBoostGauge;
+        // ==========================================
+        // 1. 부스트 게이지 업데이트
+        // ==========================================
+        if (boostFillImage != null)
+        {
+            float maxBoost = localPlayer.maxBoostGauge > 0 ? localPlayer.maxBoostGauge : 100f;
+            float currentBoost = localPlayer.currentBoostGauge;
+            
+            boostFillImage.fillAmount = Mathf.Clamp01(currentBoost / maxBoost);
+        }
 
-        // 💡 Mathf.Clamp01을 사용해 0~1 범위를 강제합니다.
-        float fillValue = Mathf.Clamp01(currentGauge / maxGauge);
-        
-        // 💡 핵심: Image의 fillAmount에 할당
-        boostFillImage.fillAmount = fillValue;
+        // ==========================================
+        // 2. 💡 분노 게이지 업데이트
+        // ==========================================
+        if (rageFillImage != null)
+        {
+            float maxRage = localPlayer.maxRageGauge > 0 ? localPlayer.maxRageGauge : 100f;
+            float currentRage = localPlayer.currentRageGauge;
+            
+            rageFillImage.fillAmount = Mathf.Clamp01(currentRage / maxRage);
+            if (localPlayer.isAwakened)
+            {
+                rageFillImage.color = Color.red; // 각성 시 붉은색
+            }
+            else
+            {
+                rageFillImage.color = Color.yellow; // 평상시 노란색
+            }
+        }
     }
 }

@@ -15,8 +15,8 @@ public class VolumeControl : MonoBehaviour
         sfxSlider.onValueChanged.AddListener(val => SoundManager.Instance.SetVolume("SFXVol", val));
         
         // 초기 값 설정 (예: 0.75f)
-        masterSlider.value = 0.75f;
-        bgmSlider.value = 0.75f;
-        sfxSlider.value = 0.75f;
+        masterSlider.value = 0.5f;
+        bgmSlider.value = 0.5f;
+        sfxSlider.value = 0.5f;
     }
 }
