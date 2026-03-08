@@ -1148,7 +1148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 92152d35a2dbd6a46a911e134fe21c57, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HostButtonVisibility
-  gameSceneName: Lee_mainwindow
+  gameSceneName: MainTitle
   startButtonName: HostStartButton
 --- !u!4 &1696602565
 Transform:

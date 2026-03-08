@@ -32,7 +32,7 @@ public class LobbyCreateUI : MonoBehaviour
             await AuthenticationService.Instance.SignInAnonymouslyAsync();
         }
 
-        statusText.text = "접속 완료. 방을 생성하세요.";
+        statusText.text = "방을 생성하세요.";
         
         // 버튼 리스너 연결
         createButton.onClick.AddListener(CreateRoom);

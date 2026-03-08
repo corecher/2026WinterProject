@@ -566,7 +566,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1176990584}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: Bblock_manager, Assembly-CSharp
         m_MethodName: OnclickReady
         m_Mode: 1
@@ -1143,7 +1143,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1176990583}
   - component: {fileID: 1176990582}
-  - component: {fileID: 1176990584}
   m_Layer: 5
   m_Name: stateManager
   m_TagString: Untagged
@@ -1182,21 +1181,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 602}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1176990584
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1176990581}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 63ec50629b1d33a42955bff8d0f3a267, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ReadyB: {fileID: 259597412}
-  NextB: {fileID: 227398927}
-  PrevB: {fileID: 1069804086}
 --- !u!1 &1305635370
 GameObject:
   m_ObjectHideFlags: 0

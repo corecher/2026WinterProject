@@ -34,13 +34,13 @@ public class ready_toggle : MonoBehaviour
     {
         if (!isReady)
         {
-            readyText.text = "�غ�";
+            readyText.text = "시작?";
             img.color = Hex("#FFFFFF");
             
         }
         else
         {
-            readyText.text = "�غ� �Ϸ�";
+            readyText.text = "시작!";
             img.color = Hex("#8BFFB2");
         }
     }

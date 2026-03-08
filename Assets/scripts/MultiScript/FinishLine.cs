@@ -124,7 +124,7 @@ public class FinishLine : NetworkBehaviour
         {
             if (client.PlayerObject.TryGetComponent<PlayerStats>(out var stats))
             {
-                if (stats.Score.Value >= 1)
+                if (stats.Score.Value >= 20)
                 {
                     isGameOver = true;
                     break;
