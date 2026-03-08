@@ -210,7 +210,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ObjectSpawner
   ShowTopMostFoldoutHeaderGroup: 1
   objectPrefab: {fileID: 6163840057169282548, guid: b5a7bb6221835924a91714e5b8d51b86, type: 3}
-  spawnCount: 500
+  spawnCount: 100
   spawnAreaCenter: {x: 0, y: 0, z: 450}
   spawnAreaSize: {x: 1500, y: 0, z: 2000}
 --- !u!114 &47761172
@@ -227,7 +227,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ObjectSpawner
   ShowTopMostFoldoutHeaderGroup: 1
   objectPrefab: {fileID: 6881859595162860903, guid: 0505d7d4b67d44a46953f7aa111f3672, type: 3}
-  spawnCount: 100
+  spawnCount: 500
   spawnAreaCenter: {x: 0, y: 100, z: 450}
   spawnAreaSize: {x: 1500, y: -50, z: 2000}
 --- !u!1 &61513104
