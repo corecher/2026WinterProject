@@ -14,9 +14,15 @@ public class NetworkGameTimer : NetworkBehaviour
 
     [Header("설정")]
     public int starttime = 3;
+    
+    [Header("사운드 설정")]
+    [Tooltip("카운트다운(3,2,1)과 GO(0) 시 재생할 SoundManager의 SFX 인덱스")]
+    [SerializeField] private int countdownSfxIndex = 1;
+
     [Header("시작 위치")]
     [SerializeField] private Vector3 startPosition = new Vector3(0, 1, 0);
 
+    // 네트워크 변수: 서버가 값을 정하고 모든 클라이언트가 읽음
     private NetworkVariable<int> netCurrentTime = new NetworkVariable<int>(
         -1, 
         NetworkVariableReadPermission.Everyone, 
@@ -24,8 +30,8 @@ public class NetworkGameTimer : NetworkBehaviour
     );
 
     // 플레이어가 움직일 수 있는지 확인하는 프로퍼티
-    // 값이 0이거나 -99(게임 중)일 때만 true를 반환합니다.
     public bool CanMove => netCurrentTime.Value == 0 || netCurrentTime.Value == -99;
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -40,10 +46,12 @@ public class NetworkGameTimer : NetworkBehaviour
     
     public override void OnNetworkSpawn()
     {
+        // 값이 변할 때마다 OnTimeValueChanged 함수를 실행하도록 이벤트 등록
         netCurrentTime.OnValueChanged += OnTimeValueChanged;
 
         if (IsServer)
         {
+            // 모든 플레이어가 씬 로딩을 마쳤을 때 이벤트 등록
             NetworkManager.Singleton.SceneManager.OnLoadEventCompleted += OnAllPlayersLoaded;
         }
         
@@ -61,6 +69,7 @@ public class NetworkGameTimer : NetworkBehaviour
 
     private void OnAllPlayersLoaded(string sceneName, LoadSceneMode loadSceneMode, System.Collections.Generic.List<ulong> clientsCompleted, System.Collections.Generic.List<ulong> clientsTimedOut)
     {
+        // 현재 활성화된 씬에서 로드가 완료되었다면 카운트다운 시작
         if (sceneName == SceneManager.GetActiveScene().name)
         {
             StartCoroutine(ServerCountdown());
@@ -69,13 +78,13 @@ public class NetworkGameTimer : NetworkBehaviour
 
     IEnumerator ServerCountdown()
     {
-        // 1. 모든 플레이어가 로드되었으므로, 시작 위치로 강제 텔레포트
-        Debug.Log("모든 플레이어를 시작 위치로 모읍니다.");
+        // 1. 모든 플레이어를 시작 위치로 이동
         TeleportAllPlayers();
 
-        // 2. 텔레포트 후 위치 동기화가 확실히 되도록 잠시 대기
+        // 2. 동기화 대기 시간
         yield return new WaitForSecondsRealtime(1.0f);
 
+        // 3. 카운트다운 진행 (starttime부터 1까지)
         int current = starttime;
         while (current > 0)
         {
@@ -84,32 +93,24 @@ public class NetworkGameTimer : NetworkBehaviour
             current--;
         }
 
-        // GO!
+        // 4. GO! (0)
         netCurrentTime.Value = 0;
+        
+        // 5. 잠시 후 UI 숨기기 (-99)
         yield return new WaitForSecondsRealtime(1.5f);
         netCurrentTime.Value = -99;
-    }
-    private void TeleportAllPlayers()
-    {
-        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
-        {
-            if (client.PlayerObject != null)
-            {
-                // 서버에서도 직접 위치를 옮겨줍니다.
-                client.PlayerObject.transform.position = startPosition;
-
-                if (client.PlayerObject.TryGetComponent<PlayerStats>(out var stats))
-                {
-                    // 클라이언트들에게 텔레포트 명령을 보냅니다.
-                    stats.TeleportPlayerClientRpc(startPosition);
-                }
-            }
-        }
     }
 
     private void OnTimeValueChanged(int previousValue, int newValue)
     {
+        // UI 텍스트 업데이트
         UpdateUI(newValue);
+
+        // 💡 [사운드 재생] 3, 2, 1, 0일 때 모두 동일한 소리 재생
+        if (SoundManager.Instance != null && newValue >= 0)
+        {
+            SoundManager.Instance.PlaySfxLocal(countdownSfxIndex);
+        }
     }
 
     private void UpdateUI(int timeValue)
@@ -120,5 +121,23 @@ public class NetworkGameTimer : NetworkBehaviour
         else if (timeValue == 0) Timet.text = "GO!";
         else if (timeValue == -99) Timet.text = "";
         else Timet.text = "Waiting...";
+    }
+
+    private void TeleportAllPlayers()
+    {
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            if (client.PlayerObject != null)
+            {
+                // 서버에서 위치 수정
+                client.PlayerObject.transform.position = startPosition;
+
+                // 클라이언트들에게 텔레포트 명령 (PlayerStats 스크립트 필요)
+                if (client.PlayerObject.TryGetComponent<PlayerStats>(out var stats))
+                {
+                    stats.TeleportPlayerClientRpc(startPosition);
+                }
+            }
+        }
     }
 }

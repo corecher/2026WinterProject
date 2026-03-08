@@ -20,7 +20,7 @@ public class PlayerMove : NetworkBehaviour
     
     [Header("부스트 설정")]
     [SerializeField] private float boostSpeedMultiplier = 1.5f; 
-    [SerializeField] private float maxBoostGauge = 100f;
+    [SerializeField] public float maxBoostGauge = 100f;
     [SerializeField] private float boostRechargeRate = 8f; 
     [SerializeField] private float boostConsumeRate = 25f; 
     
@@ -42,7 +42,7 @@ public class PlayerMove : NetworkBehaviour
     private Collider col;
     
     // 네트워크 변수 대신 로컬 변수로 유지 (이동 로직은 클라이언트 주도)
-    private float currentBoostGauge;
+    public float currentBoostGauge;
     private bool isBoosting;
     
     private float collisionSlowdownTimer = 0f;
