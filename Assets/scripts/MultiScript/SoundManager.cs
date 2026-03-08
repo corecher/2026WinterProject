@@ -70,7 +70,32 @@ public class SoundManager : NetworkBehaviour
         // 재생 종료 후 파괴
         Destroy(sfxObj, sfxClips[index].length);
     }
+    [ClientRpc]
+    private void PlaySfxClientRpc(int index, Vector3 position)
+    {
+        if (index < 0 || index >= sfxClips.Count) return;
 
+        // PlayClipAtPoint 대신 직접 생성하여 믹서 연결 및 3D 설정
+        GameObject sfxObj = new GameObject("Temp3DSFX");
+        sfxObj.transform.position = position; // 해당 위치로 이동
+        AudioSource source = sfxObj.AddComponent<AudioSource>();
+        
+        source.spatialBlend = 1.0f; // 3D 사운드로 설정 (거리에 따라 볼륨 변화)
+        source.rolloffMode = AudioRolloffMode.Linear; // 자연스러운 거리 감쇠
+
+        // SFX 믹서 그룹 연결
+        if (mainMixer != null)
+        {
+            AudioMixerGroup[] groups = mainMixer.FindMatchingGroups("SFX");
+            if (groups.Length > 0) source.outputAudioMixerGroup = groups[0];
+        }
+
+        source.clip = sfxClips[index];
+        source.Play();
+        
+        // 재생 종료 후 파괴
+        Destroy(sfxObj, sfxClips[index].length);
+    }
     // ================= [ BGM 관리 (2D) ] =================
 
     public void ChangeBgm(int index)
@@ -105,15 +130,6 @@ public class SoundManager : NetworkBehaviour
     {
         if (!IsServer) return;
         PlaySfxClientRpc(index, position);
-    }
-
-    [ClientRpc]
-    private void PlaySfxClientRpc(int index, Vector3 position)
-    {
-        if (index < 0 || index >= sfxClips.Count) return;
-
-        // 3D 공간의 해당 위치에서 소리 재생
-        AudioSource.PlayClipAtPoint(sfxClips[index], position, 1.0f);
     }
     public void ChangeBgmLocal(int index)
     {

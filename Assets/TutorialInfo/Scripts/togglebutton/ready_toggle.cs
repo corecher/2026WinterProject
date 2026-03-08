@@ -24,17 +24,6 @@ public class ready_toggle : MonoBehaviour
     {
         UpdateUI();
     }
-
-    private void Update()
-    {
-        if (Input.GetKeyDown("space"))
-        {
-            isReady = !isReady;
-            UpdateUI();
-        }
-    }
-
-
     public void OnClickToggle()
     {
         isReady = !isReady;
@@ -53,7 +42,6 @@ public class ready_toggle : MonoBehaviour
         {
             readyText.text = "�غ� �Ϸ�";
             img.color = Hex("#8BFFB2");
-            
         }
     }
 

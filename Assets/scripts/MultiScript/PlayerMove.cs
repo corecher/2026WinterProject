@@ -72,7 +72,13 @@ public class PlayerMove : NetworkBehaviour
     private Animator animator;
     private static readonly int JumpTrigger = Animator.StringToHash("Jump");
     private static readonly int IsGroundedBool = Animator.StringToHash("IsGrounded");
-
+    [Header("사운드 설정")]  
+    // 💡 [추가] SoundManager의 sfxClips 리스트의 몇 번째 소리를 낼지 정하는 인덱스 번호
+    [SerializeField] private int boostSfxIndex = 0;   // 부스트 켤 때 소리
+    [SerializeField] private int awakenSfxIndex = 1;  // 분노/각성 시 소리
+    
+    // 부스트 시작 순간을 체크하기 위한 변수
+    private bool wasBoosting = false;
     public override void OnNetworkSpawn()
     {
         if (IsOwner)
@@ -110,6 +116,7 @@ public class PlayerMove : NetworkBehaviour
             playerCamera = GetComponentInChildren<Camera>();
             if (playerCamera != null) playerCamera.fieldOfView = normalFOV;
         }
+        
     }
 
     private void TryFindTimer()
@@ -171,6 +178,21 @@ public class PlayerMove : NetworkBehaviour
                 if (currentBoostGauge > maxBoostGauge) currentBoostGauge = maxBoostGauge;
             }
         }
+        if (isBoosting && !wasBoosting)
+        {
+            // 서버에 요청해서 모든 사람에게 "이 위치에서 부스트 소리(인덱스) 틀어줘!" 라고 함
+            if (SoundManager.Instance != null && IsServer)
+            {
+                SoundManager.Instance.PlaySfx(boostSfxIndex, transform.position);
+            }
+            else if (SoundManager.Instance != null)
+            {
+                // 클라이언트라면 우선 자기 화면에서 바로 소리를 내거나 ServerRpc를 거쳐야 하지만, 
+                // 편의상 Local로 재생 (내 귀에만 즉시 들림)
+                SoundManager.Instance.PlaySfxLocal(boostSfxIndex);
+            }
+        }
+        wasBoosting = isBoosting;
         // ==========================================
 
         if (isSlowedDown)
@@ -267,7 +289,7 @@ public class PlayerMove : NetworkBehaviour
             Vector3 vel = rb.linearVelocity;
             vel.y = 0;
             rb.linearVelocity = vel;
-            
+            SoundManager.Instance.PlaySfxLocal(4);
             rb.AddForce(Vector3.up * jumpForce, ForceMode.VelocityChange);
             lastJumpTime = Time.time;
             if (animator != null) animator.SetTrigger(JumpTrigger);
@@ -332,8 +354,15 @@ public class PlayerMove : NetworkBehaviour
         currentRageGauge = maxRageGauge;
         isAwakened = true;
         awakenTimer = awakenDuration;
-        currentBoostGauge = maxBoostGauge; // 즉시 부스트 풀충전
+        currentBoostGauge = maxBoostGauge; 
         
         Debug.Log("각성 상태 돌입! 20초간 기본 속도 증가 & 스킬 사용 가능");
+
+        // 💡 [추가] 각성 발동 사운드 재생
+        if (SoundManager.Instance != null)
+        {
+            if (IsServer) SoundManager.Instance.PlaySfx(awakenSfxIndex, transform.position);
+            else SoundManager.Instance.PlaySfxLocal(awakenSfxIndex);
+        }
     }
 }

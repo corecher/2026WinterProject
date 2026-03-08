@@ -23,7 +23,7 @@ public class FinishLine : NetworkBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (!IsServer) return;
-
+         SoundManager.Instance.PlaySfxLocal(5);
         if (other.TryGetComponent<NetworkObject>(out var networkObject) && networkObject.IsPlayerObject)
         {
             ulong clientId = networkObject.OwnerClientId;
@@ -124,7 +124,7 @@ public class FinishLine : NetworkBehaviour
         {
             if (client.PlayerObject.TryGetComponent<PlayerStats>(out var stats))
             {
-                if (stats.Score.Value >= 20)
+                if (stats.Score.Value >= 1)
                 {
                     isGameOver = true;
                     break;

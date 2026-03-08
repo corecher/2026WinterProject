@@ -16,4 +16,8 @@ public class PlayerRankUIRow : MonoBehaviour
         // 게이지 바 채우기 (0.0 ~ 1.0)
         if (gaugeFillImage != null) gaugeFillImage.fillAmount = fillAmount;
     }
+    public void SetName(string playerName)
+    {
+        if (nameText != null) nameText.text = playerName;
+    }
 }

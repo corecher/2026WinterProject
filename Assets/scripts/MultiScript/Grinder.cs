@@ -22,6 +22,7 @@ public class Grinder : NetworkBehaviour
 
         // 일직선(앞방향)으로 계속 전진
         transform.Translate(Vector3.back * moveSpeed * Time.deltaTime);
+        SoundManager.Instance.PlaySfxLocal(6);
     }
 
     // 추격자를 시작 위치로 되돌리고 멈추는 함수

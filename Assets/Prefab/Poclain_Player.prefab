@@ -630,6 +630,12 @@ MonoBehaviour:
   normalFOV: 60
   boostFOV: 80
   fovChangeSpeed: 5
+  engineAudioSource: {fileID: 0}
+  minEnginePitch: 0.8
+  maxEnginePitch: 2.5
+  speedForMaxPitch: 30
+  boostSfxIndex: 2
+  awakenSfxIndex: 3
 --- !u!114 &5079099775937009426
 MonoBehaviour:
   m_ObjectHideFlags: 0
